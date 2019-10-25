@@ -31,12 +31,12 @@ public class GridScript
             for (int y = 0; y < gridArray.GetLength(1); y++)
             {
                 debugTextArray[x, y] = UtilsClass.CreateWorldText(gridArray[x, y].ToString(), null, GetWorldPosition(x, y) + new Vector3(cellSize, cellSize) * 0.5f, textSize, Color.white, TextAnchor.MiddleCenter);
-                Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x, y + 1), Color.white, 100f);
-                Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x + 1, y), Color.white, 100f);
+                //Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x, y + 1), Color.white, 100f);
+                //Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x + 1, y), Color.white, 100f);
             }
         }
-        Debug.DrawLine(GetWorldPosition(0, height), GetWorldPosition(width, height), Color.white, 100f);
-        Debug.DrawLine(GetWorldPosition(width, 0), GetWorldPosition(width, height), Color.white, 100f);
+        //Debug.DrawLine(GetWorldPosition(0, height), GetWorldPosition(width, height), Color.white, 100f);
+        //Debug.DrawLine(GetWorldPosition(width, 0), GetWorldPosition(width, height), Color.white, 100f);
 
         SetValue(2, 1, 56);
     }
@@ -72,9 +72,10 @@ public class GridScript
         if (x >= 0 && y >= 0 && x < width && y < height)
         {
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.layer = 8;
             cube.GetComponent<MeshRenderer>().material = new Material(transparentMat);
             cube.transform.position = GetWorldPosition(x, y) - new Vector3(-cellSize, -cellSize) / 2;
-            cube.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
+            cube.transform.localScale = new Vector3(cellSize, cellSize, cellSize);
             highlightArray[x, y] = cube;
         }
     }

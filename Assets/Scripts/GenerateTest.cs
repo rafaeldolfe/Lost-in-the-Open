@@ -40,21 +40,24 @@ public class GenerateTest : MonoBehaviour
         Debug.DrawLine(new Vector3(0, 0, -1), new Vector3(0, 0, -1), Color.green, 100f);
 
         grid = new GridScript(18, 6, 0.18f + -0.005f, 1, min + new Vector3(0.1f,0.1f,-1f) + new Vector3(0.01f, 0.01f, 0) + new Vector3(0.01f, 0.01f, 0) + new Vector3(0, 0.01f, 0));
-        boatWalkingGrid = new int[6, 18];
+        boatWalkingGrid = new int[18, 6];
 
         string[] gridSetup = file.text.Split(new string[] { "\n" }, int.MaxValue, StringSplitOptions.RemoveEmptyEntries);
 
-        for (int x = 0; x < 6; x++)
+        for (int s = 0; s < 6; s++)
         {
-            int[] grids = gridSetup[x].Split(new string[] { "," }, int.MaxValue, StringSplitOptions.RemoveEmptyEntries).Select(c => Int32.Parse(c)).ToArray();
-            for (int y = 0; y < 18; y++)
+            int[] grids = gridSetup[s].Split(new string[] { "," }, int.MaxValue, StringSplitOptions.RemoveEmptyEntries).Select(c => Int32.Parse(c)).ToArray();
+            Debug.Log("String here: " + gridSetup[s]);
+            Debug.Log("intarray here: " + string.Join("", grids));
+            for (int l = 0; l < 18; l++)
             {
-                boatWalkingGrid[x, y] = grids[x];
-                if (grids[x] == -1)
+                boatWalkingGrid[l, s] = grids[l];
+                if (grids[l] == -1)
                 {
-                    Debug.Log(grids[x]);
-                    Debug.Log(x + ", " + y);
-                    grid.SetColor(new Vector3(x,y), transparentMat, Color.red);
+                    Debug.Log(grids[l]);
+                    Debug.Log(l + ", " + s);
+                    transparentMat.SetColor("_Color", Color.red);
+                    grid.SetColor(l, s, transparentMat);
                 }
             }
         }
