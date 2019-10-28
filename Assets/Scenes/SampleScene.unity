@@ -449,6 +449,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   transparentMat: {fileID: 2100000, guid: e2969e71934725d42ba8a076a50601d1, type: 2}
   prefab: {fileID: 7428434925751566770, guid: 98f1cf9907c6aa6479b1e903a4f2a48f, type: 3}
+  file: {fileID: 4900000, guid: abc1d974feedd4d449a3674530b6dc9b, type: 3}
 --- !u!1 &1168063256
 GameObject:
   m_ObjectHideFlags: 0
@@ -557,7 +558,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1802505464}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -567,7 +568,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

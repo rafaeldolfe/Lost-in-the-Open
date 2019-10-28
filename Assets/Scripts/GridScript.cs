@@ -2,27 +2,35 @@
 using System.Collections.Generic;
 using UnityEngine;
 using CodeMonkey.Utils;
+using System;
 
-public class GridScript
+public class GridScript<TGridObject>
 {
+    public event EventHandler<OnGridObjectChangedEventArgs> OnGridObjectChanged;
+    public class OnGridObjectChangedEventArgs
+    {
+        public int x;
+        public int y;
+    }
+
     private GameObject[,] highlightArray;
 
     private int width;
     private int height;
     private float cellSize;
     private Vector3 originPosition;
-    private int[,] gridArray;
+    private TGridObject[,] gridArray;
     private Color[,] colorArray;
     private TextMesh[,] debugTextArray;
 
-    public GridScript(int width, int height, float cellSize, int textSize, Vector3 originPosition)
+    public GridScript(int width, int height, float cellSize, Vector3 originPosition, Func<GridScript<TGridObject>, int, int, TGridObject> initObject)
     {
         this.width = width;
         this.height = height;
         this.cellSize = cellSize;
         this.originPosition = originPosition;
 
-        gridArray = new int[width, height];
+        gridArray = new TGridObject[width, height];
         highlightArray = new GameObject[width, height];
         debugTextArray = new TextMesh[width, height];
 
@@ -30,15 +38,24 @@ public class GridScript
         {
             for (int y = 0; y < gridArray.GetLength(1); y++)
             {
-                debugTextArray[x, y] = UtilsClass.CreateWorldText(gridArray[x, y].ToString(), null, GetWorldPosition(x, y) + new Vector3(cellSize, cellSize) * 0.5f, textSize, Color.white, TextAnchor.MiddleCenter);
-                //Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x, y + 1), Color.white, 100f);
-                //Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x + 1, y), Color.white, 100f);
+                gridArray[x, y] = initObject(this, x, y);
             }
         }
-        //Debug.DrawLine(GetWorldPosition(0, height), GetWorldPosition(width, height), Color.white, 100f);
-        //Debug.DrawLine(GetWorldPosition(width, 0), GetWorldPosition(width, height), Color.white, 100f);
 
-        SetValue(2, 1, 56);
+        bool debugMode = false;
+        if (debugMode == true)
+        {
+            for (int x = 0; x < gridArray.GetLength(0); x++)
+            {
+                for (int y = 0; y < gridArray.GetLength(1); y++)
+                {
+                    Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x, y + 1), Color.white, 100f);
+                    Debug.DrawLine(GetWorldPosition(x, y), GetWorldPosition(x + 1, y), Color.white, 100f);
+                }
+            }
+            Debug.DrawLine(GetWorldPosition(0, height), GetWorldPosition(width, height), Color.white, 100f);
+            Debug.DrawLine(GetWorldPosition(width, 0), GetWorldPosition(width, height), Color.white, 100f);
+        }
     }
     private Vector3 GetWorldPosition(int x, int y)
     {
@@ -51,7 +68,7 @@ public class GridScript
         y = Mathf.FloorToInt((worldPosition - originPosition).y / cellSize);
     }
 
-    public void SetValue(int x, int y, int value)
+    public void SetValue(int x, int y, TGridObject value)
     {
         if (x >= 0 && y >= 0 && x < width && y < height)
         {
@@ -60,15 +77,36 @@ public class GridScript
         }
     }
 
-    public void SetValue(Vector3 worldPosition, int value)
+    public void SetValue(Vector3 worldPosition, TGridObject value)
     {
         int x, y;
         GetXY(worldPosition, out x, out y);
         SetValue(x, y, value);
     }
 
+    private void RemoveColor(int x, int y)
+    {
+        if (x > gridArray.GetLength(0) || x < 0 || y > gridArray.GetLength(1) || y < 0)
+        {
+            return;
+        }
+        UnityEngine.Object.Destroy(highlightArray[x, y]);
+        highlightArray[x, y] = null;
+    }
+
+    public void RemoveColor(Vector3 worldPosition)
+    {
+        int x, y;
+        GetXY(worldPosition, out x, out y);
+        RemoveColor(x, y);
+    }
+
     public void SetColor(int x, int y, Material transparentMat)
     {
+        if (x > gridArray.GetLength(0) || x < 0 || y > gridArray.GetLength(1) || y < 0)
+        {
+            return;
+        }
         if (x >= 0 && y >= 0 && x < width && y < height)
         {
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -84,12 +122,11 @@ public class GridScript
     {
         int x, y;
         GetXY(worldPosition, out x, out y);
-        Debug.Log("x and y conversion: " + x + ", " + y);
         transparentMat.SetColor("_Color", color);
         SetColor(x, y, transparentMat);
     }
 
-    public int GetValue(int x, int y)
+    public TGridObject GetValue(int x, int y)
     {
         if (x >= 0 && y >= 0 && x < width && y < height)
         {
@@ -97,11 +134,11 @@ public class GridScript
         }
         else
         {
-            return -1;
+            return default(TGridObject);
         }
     }
 
-    public int GetValue(Vector3 worldPosition)
+    public TGridObject GetValue(Vector3 worldPosition)
     {
         int x, y;
         GetXY(worldPosition, out x, out y);
