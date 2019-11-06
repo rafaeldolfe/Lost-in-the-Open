@@ -42,8 +42,7 @@ public class GridScript<TGridObject>
             }
         }
 
-        bool debugMode = false;
-        if (debugMode == true)
+        if (DebugStore.debugMode)
         {
             for (int x = 0; x < gridArray.GetLength(0); x++)
             {

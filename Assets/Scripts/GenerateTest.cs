@@ -51,7 +51,10 @@ public class GenerateTest : MonoBehaviour
                 {
                     transparentMat.SetColor("_Color", Color.red);
                     grid.GetValue(l, s).SetStatus(PathNode.STATUS.UNAVAILABLE);
-                    grid.SetColor(l, s, transparentMat);
+                    if(DebugStore.debugMode)
+                    {
+                        grid.SetColor(l, s, transparentMat);
+                    }
                 }
             }
         }
