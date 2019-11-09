@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Movement : MonoBehaviour
+public class Unit : MonoBehaviour
 {
-    public int moveRange;
+    
 }

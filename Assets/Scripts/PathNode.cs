@@ -6,7 +6,7 @@ using CodeMonkey.Utils;
 public class PathNode
 {
     public enum STATUS { NORMAL, UNAVAILABLE, HIGHLIGHTED };
-    private GridScript<PathNode> grid;
+    private BoatGrid<PathNode> grid;
     private int x;
     private int y;
     private STATUS status;
@@ -17,7 +17,7 @@ public class PathNode
 
     public PathNode cameFromNode;
 
-    public PathNode(GridScript<PathNode> grid, int x, int y)
+    public PathNode(BoatGrid<PathNode> grid, int x, int y)
     {
         this.grid = grid;
         this.x = x;

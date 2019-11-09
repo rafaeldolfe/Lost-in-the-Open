@@ -9,10 +9,11 @@ public class GenerateTest : MonoBehaviour
 {
     public Material transparentMat;
     public GameObject prefab;
+    public GameObject guard;
     public TextAsset file;
 
     private int[,] boatWalkingGrid;
-    private GridScript<PathNode> grid;
+    private BoatGrid<PathNode> grid;
     private GameObject playerBoatPosition;
     private float x;
     private float y;
@@ -33,10 +34,10 @@ public class GenerateTest : MonoBehaviour
         Vector3 max = prefab.GetComponent<SpriteRenderer>().bounds.max;
         Vector3 min = prefab.GetComponent<SpriteRenderer>().bounds.min;
 
-        //grid = new GridScript<int>(18, 6, 0.18f + -0.005f, min + new Vector3(0.1f, 0.1f, -1f) + new Vector3(0.01f, 0.01f, 0) + new Vector3(0.01f, 0.01f, 0) + new Vector3(0, 0.01f, 0), (GridScript<int> g, int x, int y) => 0);
-        grid = new GridScript<PathNode>(18, 6, 0.18f + -0.005f, min + new Vector3(0.12f, 0.11f, -1), (GridScript<PathNode> g, int x, int y) => new PathNode(g, x, y));
+        //grid = new BoatGrid<int>(18, 6, 0.18f + -0.005f, min + new Vector3(0.1f, 0.1f, -1f) + new Vector3(0.01f, 0.01f, 0) + new Vector3(0.01f, 0.01f, 0) + new Vector3(0, 0.01f, 0), (BoatGrid<int> g, int x, int y) => 0);
+        grid = new BoatGrid<PathNode>(18, 6, 0.18f + -0.005f, min + new Vector3(0.12f, 0.11f, -1), (BoatGrid<PathNode> g, int x, int y) => new PathNode(g, x, y));
 
-
+        grid.AddUnit(5, 5, guard);
         boatWalkingGrid = new int[18, 6];
 
         string[] gridSetup = file.text.Split(new string[] { "\n" }, int.MaxValue, StringSplitOptions.RemoveEmptyEntries);

@@ -12,4 +12,9 @@ public class Health : MonoBehaviour
     {
         this.health = startingHealth;
     }
+
+    void damage(int amount)
+    {
+        health -= amount;
+    }
 }

@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 using CodeMonkey.Utils;
+using System.Linq;
 using System;
 
-public class GridScript<TGridObject>
+public class BoatGrid<TGridObject>
 {
+    public const float DEFAULT_Z = -1f;
+
     public event EventHandler<OnGridObjectChangedEventArgs> OnGridObjectChanged;
     public class OnGridObjectChangedEventArgs
     {
@@ -13,17 +16,17 @@ public class GridScript<TGridObject>
         public int y;
     }
 
-    private GameObject[,] highlightArray;
-
     private int width;
     private int height;
     private float cellSize;
     private Vector3 originPosition;
-    private TGridObject[,] gridArray;
-    private Color[,] colorArray;
-    private TextMesh[,] debugTextArray;
 
-    public GridScript(int width, int height, float cellSize, Vector3 originPosition, Func<GridScript<TGridObject>, int, int, TGridObject> initObject)
+    private GameObject[,] highlightArray;
+    private TGridObject[,] gridArray;
+    private GameObject[,] units;
+    private Color[,] colorArray;
+
+    public BoatGrid(int width, int height, float cellSize, Vector3 originPosition, Func<BoatGrid<TGridObject>, int, int, TGridObject> initObject)
     {
         this.width = width;
         this.height = height;
@@ -32,7 +35,7 @@ public class GridScript<TGridObject>
 
         gridArray = new TGridObject[width, height];
         highlightArray = new GameObject[width, height];
-        debugTextArray = new TextMesh[width, height];
+        units = new GameObject[width, height];
 
         for (int x = 0; x < gridArray.GetLength(0); x++)
         {
@@ -58,7 +61,9 @@ public class GridScript<TGridObject>
     }
     private Vector3 GetWorldPosition(int x, int y)
     {
-        return new Vector3(x, y) * cellSize + originPosition;
+        Vector3 pos = new Vector3(x, y) * cellSize + originPosition;
+        pos.z = DEFAULT_Z;
+        return pos;
     }
 
     private void GetXY(Vector3 worldPosition, out int x, out int y)
@@ -72,7 +77,6 @@ public class GridScript<TGridObject>
         if (x >= 0 && y >= 0 && x < width && y < height)
         {
             gridArray[x, y] = value;
-            debugTextArray[x, y].text = gridArray[x, y].ToString();
         }
     }
 
@@ -142,5 +146,18 @@ public class GridScript<TGridObject>
         int x, y;
         GetXY(worldPosition, out x, out y);
         return GetValue(x, y);
+    }
+
+    public void AddUnit(int x, int y, GameObject unit)
+    {
+        units[x, y] = unit;
+        UnityEngine.Object.Instantiate(unit, GetWorldPosition(x,y), Quaternion.identity);
+    }
+
+    public void AddUnit(Vector3 worldPosition, GameObject unit)
+    {
+        int x, y;
+        GetXY(worldPosition, out x, out y);
+        AddUnit(x, y, unit);
     }
 }
