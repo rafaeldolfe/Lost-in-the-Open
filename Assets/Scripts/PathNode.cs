@@ -1,42 +1,73 @@
-﻿using System.Collections;
+﻿/* 
+    ------------------- Code Monkey -------------------
+
+    Thank you for downloading this package
+    I hope you find it useful in your projects
+    If you have any questions let me know
+    Cheers!
+
+               unitycodemonkey.com
+    --------------------------------------------------
+ */
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using CodeMonkey.Utils;
 
 public class PathNode
 {
-    public enum STATUS { NORMAL, UNAVAILABLE, HIGHLIGHTED };
-    private BoatGrid<PathNode> grid;
-    private int x;
-    private int y;
-    private STATUS status;
+
+    public GridContainer parent;
+    public int x;
+    public int z;
 
     public int gCost;
     public int hCost;
     public int fCost;
 
+    public bool isWalkable;
+    public bool hasActor;
     public PathNode cameFromNode;
 
-    public PathNode(BoatGrid<PathNode> grid, int x, int y)
+    public PathNode(GridContainer parent, int x, int z)
     {
-        this.grid = grid;
+        this.parent = parent;
         this.x = x;
-        this.y = y;
-        this.status = STATUS.NORMAL;
+        this.z = z;
+        isWalkable = true;
+        hasActor = false;
+    }
+
+    public void CalculateFCost()
+    {
+        fCost = gCost + hCost;
+    }
+
+    public void SetIsWalkable(bool isWalkable)
+    {
+        this.isWalkable = isWalkable;
+    }
+
+    public void SetHasActor(bool hasUnit)
+    {
+        this.hasActor = hasUnit;
     }
 
     public override string ToString()
     {
-        return x + "," + y;
+        return x + "," + z;
     }
 
-    public STATUS GetStatus()
+    public bool CheckConditions(PathfindingConfig pfconfig)
     {
-        return status;
-    }
-
-    public void SetStatus(STATUS status)
-    {
-        this.status = status;
+        if (!pfconfig.ignoresActors && hasActor)
+        {
+            return false;
+        }
+        if (!pfconfig.ignoresTerrain && !isWalkable)
+        {
+            return false;
+        }
+        return true;
     }
 }

@@ -1,0 +1,101 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &47384394365002827
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 47384394365002836}
+  - component: {fileID: 47384394365002837}
+  - component: {fileID: 47384394365002838}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &47384394365002836
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47384394365002827}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &47384394365002837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47384394365002827}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 849f51aed91e49549a8318333325e30c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  numberOfPlayers: 2
+  playerColors:
+  - {r: 0.9843137, g: 0.68235296, b: 0, a: 0}
+  - {r: 0.85490197, g: 0.3254902, b: 0.3254902, a: 0}
+  - {r: 0.22352941, g: 0.34509805, b: 0.6039216, a: 0}
+  - {r: 0.2, g: 0.5372549, b: 0.5176471, a: 0}
+  playerPrefab: {fileID: 2511701292928920238, guid: 493e2d59c9dea4149a74b866d805d300,
+    type: 3}
+  useRandomlyGeneratedMap: 1
+  useRandomlyGeneratedResources: 1
+  useRandomlyGeneratedNeutrals: 1
+  premadeMapPrefab: {fileID: 4836539968353509047, guid: d84cde5448acf734498106ccae71cb93,
+    type: 3}
+  randomlyGeneratedMapPrefab: {fileID: 1424648955087536185, guid: d7bc5f8c51a02c342a6b3b257a9d9529,
+    type: 3}
+  turnManagerPrefab: {fileID: 6662648352523292886, guid: dc07c99fbfd33c643b005688a50087f5,
+    type: 3}
+  useHighlightSystem: 1
+  selectedUnitPrefab: {fileID: 5519920218521805659, guid: 8eed5f37cd1f81a4f8ea47c4ef1ad18f,
+    type: 3}
+  movementSafePrefab: {fileID: 3675633783111034069, guid: 985ef68d337c5b44984548cab51fd84f,
+    type: 3}
+  movementDangerPrefab: {fileID: 3005249785489019046, guid: cd4c9b7a672b34d4ea51592597b6447d,
+    type: 3}
+  attackRangePrefab: {fileID: 5183888826179535491, guid: 2b72818dcfa14ec4c9132897ffa12e45,
+    type: 3}
+  uiManagerPrefab: {fileID: 7105179212147237826, guid: 3c63c34b0b41f8941b6d44aa122f9e41,
+    type: 3}
+  inputManager: {fileID: 0}
+  mapManager: {fileID: 0}
+  turnManager: {fileID: 0}
+  uiManager: {fileID: 0}
+  playerContainer: {fileID: 0}
+  Players: []
+--- !u!114 &47384394365002838
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47384394365002827}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14cbce6bd6e9ddb439beef73c251bbf8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Action: 97
+  inputAction: 
+  Train: 116
+  inputTrain: 
+  Build: 98
+  inputBuild: 
+  Escape: 27
+  inputEscape: 
+  gameManager: {fileID: 0}
