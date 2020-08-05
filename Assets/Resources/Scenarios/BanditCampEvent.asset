@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c5d43ea4c82ecb4484100713fb85846, type: 3}
+  m_Name: BanditCampEvent
+  m_EditorClassIdentifier: Assembly-CSharp:WorldMap:ScenarioScriptableObject
+  iconPrefabName: FightNode
+  prompts:
+  - id: Preamble
+    text: You stumble upon a bandit camp in the middle of the forest. They have not
+      noticed you yet.
+    options:
+    - text: Attack them
+      precondition:
+        goldCost: 0
+        foodCost: 0
+        showTextRegardless: 0
+      encounter:
+        sceneName: StandardRebelForestEncounter
+        enemies:
+        - {fileID: 6159491619698555064, guid: 00d657627667ce34eb4e11eeb1b43784, type: 3}
+        - {fileID: 6159491619698555064, guid: 00d657627667ce34eb4e11eeb1b43784, type: 3}
+        - {fileID: 6159491619698555064, guid: 00d657627667ce34eb4e11eeb1b43784, type: 3}
+      pointsTo: AttackConclusion
+    - text: Circumvent the camp
+      precondition:
+        goldCost: 0
+        foodCost: 0
+        showTextRegardless: 0
+      encounter:
+        sceneName: 
+        enemies: []
+      pointsTo: CircumventConclusion
+    hasConclusion: 0
+    conclusion:
+      gold: 0
+      food: 0
+      units: []
+  - id: AttackConclusion
+    text: You successfully crush the rebel camp.
+    options: []
+    hasConclusion: 1
+    conclusion:
+      gold: 5
+      food: 3
+      units: []
+  - id: CircumventConclusion
+    text: You manage to sneak around them.
+    options: []
+    hasConclusion: 1
+    conclusion:
+      gold: 0
+      food: 3
+      units: []

@@ -7,6 +7,8 @@ TagManager:
   - Highlight
   - Unit
   - FriendlyUnit
+  - Node
+  - Option
   layers:
   - Default
   - TransparentFX
@@ -16,7 +18,7 @@ TagManager:
   - UI
   - 
   - 
-  - 
+  - EditorOnly
   - 
   - 
   - 
