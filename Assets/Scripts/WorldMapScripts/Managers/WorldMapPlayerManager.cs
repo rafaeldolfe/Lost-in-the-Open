@@ -36,12 +36,29 @@ namespace WorldMap
             gem.StartListening("RegeneratedMap", RespawnPlayer);
             gem.StartListening("GeneratedMap", SpawnPlayer);
             gem.StartListening("ClickNode", AttemptMovePlayer);
+
+            gem.StartListening("Travel", EatFood);
         }
         private void OnDestroy()
         {
             gem.StopListening("RegeneratedMap", RespawnPlayer);
             gem.StopListening("GeneratedMap", SpawnPlayer);
             gem.StopListening("ClickNode", AttemptMovePlayer);
+
+            gem.StopListening("Travel", EatFood);
+        }
+        private void EatFood()
+        {
+            Debug.Log("Fak ur mader!");
+            int unitCount = gdm.GetGameData<List<PlainGameObject>>("PlayerUnits").Count;
+            int eatCost = unitCount * Constants.UNIT_FOOD_EAT_COST + Constants.KING_FOOD_EAT_COST;
+
+            if (gdm.GetGameData<int>("Food") < eatCost)
+            {
+                gem.TriggerEvent("GameOver");
+            }
+
+            gem.TriggerEvent("AddFood", gameObject, new List<object> { -eatCost });
         }
         public void _DestroyPlayer()
         {
@@ -72,10 +89,10 @@ namespace WorldMap
         private void AttemptMovePlayer(GameObject targetNode, List<object> parameters)
         {
             if (moving) return;
-            if (wmm.CheckIfLocationAndNodeAreNeighbours(playerLocation, targetNode))
-            {
-                StartCoroutine(MoveOverSpeed(targetNode, moveSpeed));
-            }
+            if (!wmm.CheckIfLocationAndNodeAreNeighbours(playerLocation, targetNode)) return;
+
+            gem.TriggerEvent("Travel");
+            StartCoroutine(MoveOverSpeed(targetNode, moveSpeed));
         }
         public IEnumerator MoveOverSpeed(GameObject node, float speed)
         {

@@ -39,10 +39,44 @@ MonoBehaviour:
     options: []
     hasConclusion: 1
     conclusion:
-      gold: 10
-      food: 10
+      gold: 80
+      food: 120
       units:
       - {fileID: 3456065453680784595, guid: 7ae909ae3c4b5f046819d554eaf5e2e2, type: 3}
       - {fileID: 3456065453680784595, guid: 7ae909ae3c4b5f046819d554eaf5e2e2, type: 3}
       - {fileID: 3456065453680784595, guid: 7ae909ae3c4b5f046819d554eaf5e2e2, type: 3}
-      plainUnits: []
+      - {fileID: 3456065453680784595, guid: 50c91022e74c1784dbf6375779fded0a, type: 3}
+      plainUnits:
+      - prefabName: Guard
+        folder: Prefabs/Units
+        scripts:
+        - type: Encounter.Actor
+        - type: Encounter.AbilitiesHandler
+        - type: Encounter.Move
+        - type: Encounter.DefaultAttack
+        - type: Encounter.AttackOfOpportunity
+        - type: Encounter.Position
+        - type: Encounter.Health
+        - type: Encounter.Faction
+      - prefabName: Guard
+        folder: Prefabs/Units
+        scripts:
+        - type: Encounter.Actor
+        - type: Encounter.AbilitiesHandler
+        - type: Encounter.Move
+        - type: Encounter.DefaultAttack
+        - type: Encounter.AttackOfOpportunity
+        - type: Encounter.Position
+        - type: Encounter.Health
+        - type: Encounter.Faction
+      - prefabName: Guard
+        folder: Prefabs/Units
+        scripts:
+        - type: Encounter.Actor
+        - type: Encounter.AbilitiesHandler
+        - type: Encounter.Move
+        - type: Encounter.DefaultAttack
+        - type: Encounter.AttackOfOpportunity
+        - type: Encounter.Position
+        - type: Encounter.Health
+        - type: Encounter.Faction

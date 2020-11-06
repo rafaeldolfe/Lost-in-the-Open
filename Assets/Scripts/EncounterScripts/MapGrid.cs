@@ -56,15 +56,15 @@ namespace Encounter
             List<GridContainer> rectangle = new List<GridContainer>();
             int currentx = x;
             int currenty = y;
-            for (int xi = currentx - width; xi < currentx + width; xi++)
+            for (int xi = currentx - width; xi <= currentx + width; xi++)
             {
                 int gridWidth = GetWidth();
-                int gridHeight = GetWidth();
-                if (xi < 0 || xi > gridWidth) continue;
-                for (int yi = currenty - height; yi < currenty + height; yi++)
+                int gridHeight = GetHeight();
+                if (xi < 0 || xi > gridWidth - 1) continue;
+                for (int yi = currenty - height; yi <= currenty + height; yi++)
                 {
-                    if (yi < 0 || yi > gridHeight) continue;
-                    rectangle.Add(tiles[xi + yi * gridHeight]);
+                    if (yi < 0 || yi > gridHeight - 1) continue;
+                    rectangle.Add(GetGridObject(xi, yi));
                 }
             }
             return rectangle;

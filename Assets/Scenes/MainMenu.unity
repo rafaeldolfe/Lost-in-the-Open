@@ -548,6 +548,36 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 89779715}
   m_CullTransparentMesh: 0
+--- !u!1 &232456712
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 232456713}
+  m_Layer: 0
+  m_Name: GlobalDebugManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &232456713
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 232456712}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1782867915}
+  m_RootOrder: 7
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &247989212
 GameObject:
   m_ObjectHideFlags: 0
@@ -593,6 +623,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _scenario: {fileID: 11400000, guid: d5682468f6060c345bea2edcd26da673, type: 2}
   winScenario: {fileID: 11400000, guid: d5135b556dc0d0b4d8125d0703ce284a, type: 2}
+  _scenario_mountain_encounter: {fileID: 11400000, guid: 79e48bf7b8529314bad7422c44903646,
+    type: 2}
+  _scenario_coast_encounter: {fileID: 11400000, guid: 79be3693c31635d4b91e64294be339fc,
+    type: 2}
 --- !u!114 &266617637 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5999089101116952908, guid: c4462077b441c8f45ad949f63012de65,
@@ -726,6 +760,8 @@ MonoBehaviour:
   wmm: {fileID: 0}
   wpm: {fileID: 0}
   enm: {fileID: 0}
+  tileHighlight: {fileID: 7587361490693086099, guid: e01a27735e7881d4f864a09767cd24ae,
+    type: 3}
 --- !u!1 &382679480
 GameObject:
   m_ObjectHideFlags: 0
@@ -3076,6 +3112,7 @@ Transform:
   - {fileID: 304128869}
   - {fileID: 16768963}
   - {fileID: 247989213}
+  - {fileID: 232456713}
   m_Father: {fileID: 382679482}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

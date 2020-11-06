@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Encounter
 {
-    public abstract class MovementAbility : Ability
+    public interface IMovement
     {
 
     }

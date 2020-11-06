@@ -1,22 +1,28 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Linq;
-using System;
+using UnityEngine;
 using Utils;
 
 namespace Encounter
 {
     public class SelectedManager : MonoBehaviour
     {
+        public enum HighlightType
+        {
+            TilesWithinRange,
+            TargetTiles,
+        }
+
         private GlobalEventManager gem;
         private FactionManager fm;
 
         public GameObject tileHighlight;
+        public GameObject tileHollowHighlight;
 
         public Selected selected;
 
-        private List<GridContainer> highlightedTiles;
+        private List<Highlight> highlights = new List<Highlight>();
         private Color prevColor;
 
         void Awake()
@@ -30,29 +36,55 @@ namespace Encounter
             {
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
-            this.highlightedTiles = new List<GridContainer>();
 
             gem.StartListening("Death", DeathHandler);
             gem.StartListening("ActorIsDone", ActorIsDoneHandler);
-            gem.StartListening("EndTurn", EndTurnHandler);
+            gem.StartListening("PlayerEndTurn", EndTurnHandler);
+            gem.StartListening("EnemyEndTurn", EndAITurnHandler);
         }
 
         void OnDestroy()
         {
             gem.StopListening("Death", DeathHandler);
             gem.StopListening("ActorIsDone", ActorIsDoneHandler);
-            gem.StopListening("EndTurn", EndTurnHandler);
+            gem.StopListening("PlayerEndTurn", EndTurnHandler);
+            gem.StopListening("EnemyEndTurn", EndAITurnHandler);
         }
         private void Update()
         {
             if (selected == null || selected.ah.GetStatus() == "Busy" || selected.ah.IsCurrentAbilityDone())
             {
-                UnhighlightPath();
+                UnhighlightPath(HighlightType.TilesWithinRange);
+                UnhighlightPath(HighlightType.TargetTiles);
                 return;
             }
-            Color color = selected.ah.GetHighlightColor();
-            List<GridContainer> path = GetGridContainersFromPathNodes(selected.ah.GetTilesWithinRange());
-            HighlightPath(path, color);
+            Color abilityColor = selected.ah.GetHighlightColor();
+            Color color = MixColors(abilityColor, Constants.WITHIN_RANGE_HIGHLIGHT_COLOR);
+            List<GridContainer> tiles = GetGridContainersFromPathNodes(selected.ah.GetTilesWithinRange());
+            HighlightTiles(tiles, color, HighlightType.TilesWithinRange, tileHollowHighlight);
+        }
+        private Color MixColors(Color a, Color b, float alpha = 1)
+        {
+            return new Color((a.r + b.r) / 2, (a.g + b.g) / 2, (a.b + b.b) / 2);
+        }
+        private void DeathHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
+        {
+            if (selected != null && selected.go == null)
+            {
+                Unselect();
+            }
+        }
+        private void ActorIsDoneHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
+        {
+            SelectFirstAvailablePlayerActor();
+        }
+        private void EndTurnHandler()
+        {
+            Unselect();
+        }
+        private void EndAITurnHandler()
+        {
+            SelectFirstAvailablePlayerActor();
         }
         public void Select(GameObject actor)
         {
@@ -73,50 +105,73 @@ namespace Encounter
                 selected = null;
             }
         }
-        public void HighlightPath(List<GridContainer> newTiles, Color highlightColor)
+        public void HighlightTargetTile(GridContainer current)
+        {
+            if (highlights.Where(hl => hl.gc == current).Any())
+            {
+                HighlightTiles(selected.ah.GetTargetTiles(current.pn.x, current.pn.y), selected.ah.GetHighlightColor(), HighlightType.TargetTiles, tileHighlight);
+            }
+            else
+            {
+                UnhighlightPath(HighlightType.TargetTiles);
+            }
+        }
+        public void HighlightTiles(List<GridContainer> newTiles, Color highlightColor, HighlightType newHighlightType, GameObject highlightPrefab)
         {
 
-            if (CompareGridContainerLists(newTiles, highlightedTiles) && prevColor.Equals(highlightColor))
+            if (CompareGridContainerLists(newTiles, highlightColor, newHighlightType))
             {
                 return;
             }
 
-            UnhighlightPath();
+            UnhighlightPath(newHighlightType);
 
             foreach (GridContainer gc in newTiles)
             {
-                GameObject tileHighlightInstance = Instantiate(tileHighlight, tileHighlight.transform.position + new Vector3(gc.x, gc.y, 0), tileHighlight.transform.rotation);
-                tileHighlightInstance.GetComponent<Renderer>().GetComponent<Renderer>().material.color = highlightColor;
+                float z = newHighlightType == HighlightType.TargetTiles ? 0.1f : 0;
+                GameObject tileHighlightInstance = Instantiate(highlightPrefab, highlightPrefab.transform.position + new Vector3(gc.x, gc.y, z), highlightPrefab.transform.rotation);
+                TileHighlightScript script = tileHighlightInstance.GetComponent<TileHighlightScript>();
+                if (script == null)
+                {
+                    throw ProgramUtils.MissingComponentException(typeof(TileHighlightScript));
+                }
+                script.SetColor(highlightColor);
                 gc.AddGameObject(tileHighlightInstance);
+                highlights.Add(new Highlight(gc, tileHighlightInstance, newHighlightType, highlightColor));
             }
-            highlightedTiles = newTiles;
-            prevColor = highlightColor;
         }
-        public void UnhighlightPath()
+        public void UnhighlightAll()
         {
-            if (highlightedTiles.Count == 0)
+            if (highlights.Count == 0)
             {
                 return;
             }
-            foreach (GridContainer gcon in highlightedTiles)
+            foreach (Highlight highlight in highlights)
             {
-                foreach (GameObject go in gcon.gos)
-                {
-                    if (go.tag == "Highlight")
-                    {
-                        UnityEngine.Object.Destroy(go);
-                        gcon.RemoveGameObject(go);
-                        break;
-                    }
-                }
+                highlight.gc.RemoveGameObject(highlight.go);
+                Destroy(highlight.go);
             }
-            highlightedTiles = new List<GridContainer>();
+            highlights = new List<Highlight>();
+        }
+        public void UnhighlightPath(HighlightType highlightType)
+        {
+            if (highlights.Count == 0)
+            {
+                return;
+            }
+            var filtered = highlights.Where(h => h.type == highlightType);
+            foreach (Highlight highlight in filtered)
+            {
+                highlight.gc.RemoveGameObject(highlight.go);
+                Destroy(highlight.go);
+            }
+            highlights = highlights.Where(h => h.type != highlightType).ToList();
         }
         public void UseAbility(int x, int y)
         {
             if (selected != null && selected.go.GetComponent<Faction>().faction == "Player")
             {
-                selected.ah.UseAbility(x, y);
+                StartCoroutine(selected.ah.UseAbility(x, y));
             }
         }
         public void SetAbility(int index)
@@ -141,28 +196,13 @@ namespace Encounter
             gem.TriggerEvent("OfferEndTurn", gameObject);
             Unselect();
         }
-        private void DeathHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
-        {
-            if (selected != null && selected.go == null)
-            {
-                Unselect();
-            }
-        }
-        private void ActorIsDoneHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
-        {
-            SelectFirstAvailablePlayerActor();
-        }
-        private void EndTurnHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
-        {
-            SelectFirstAvailablePlayerActor();
-        }
         private void TriggerSetAbilityBar(GameObject actor)
         {
             if (actor.GetComponent<AbilitiesHandler>() == null)
             {
                 return;
             }
-            List<object> abilityBarParams = actor.GetComponent<AbilitiesHandler>().GetAbilities().Select(p => (object)p).ToList();
+            List<object> abilityBarParams = actor.GetComponent<AbilitiesHandler>().GetActiveAbilities().ConvertAll(p => (object)p);
             gem.TriggerEvent("SetAbilityBar", actor, abilityBarParams);
         }
         private void TriggerSetPortrait(GameObject actor)
@@ -180,20 +220,38 @@ namespace Encounter
             }
             gem.TriggerEvent("SetPortrait", actor, portraitParams);
         }
-        private bool CompareGridContainerLists(List<GridContainer> prev, List<GridContainer> curr)
+        private bool CompareGridContainerLists(List<GridContainer> newTiles, Color color, HighlightType newHighlightType)
         {
-            if (prev.Count != curr.Count)
+            List<GridContainer> filtered = highlights.Where(h => h.color == color && h.type == newHighlightType).ToList().ConvertAll(f => f.gc);
+            if (newTiles.Count != filtered.Count)
                 return false;
-            for (int i = 0; i < prev.Count; i++)
+            foreach (GridContainer gc in newTiles)
             {
-                if (prev[i] != curr[i])
+                if (!filtered.Contains(gc))
+                {
                     return false;
+                }
             }
             return true;
         }
         private List<GridContainer> GetGridContainersFromPathNodes(List<PathNode> path)
         {
             return path.ConvertAll<GridContainer>(p => p.parent);
+        }
+        private class Highlight
+        {
+            public GridContainer gc;
+            public GameObject go;
+            public HighlightType type;
+            public Color color;
+
+            public Highlight(GridContainer gc, GameObject go, HighlightType type, Color color)
+            {
+                this.gc = gc;
+                this.go = go;
+                this.type = type;
+                this.color = color;
+            }
         }
     }
 

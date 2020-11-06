@@ -2,7 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 using Utils;
+using Sirenix.Serialization;
+using Sirenix.Utilities;
+using Sirenix.OdinInspector;
 
 namespace Encounter
 {
@@ -10,46 +14,71 @@ namespace Encounter
     {
         private GlobalEventManager gem;
         private Pathfinding pf;
+        private EventLoopManager elm;
         private Position pos;
+        private FactionManager fm;
 
-        public List<string> abilityNames;
-        private List<Ability> abilities;
+        private List<ActiveAbility> activeAbilities;
+        private List<PassiveAbility> passiveAbilities;
 
-        private Ability current;
+        private ActiveAbility current;
 
+        private void CacheAbilities()
+        {
+            activeAbilities = GetComponents<MonoBehaviour>()
+                .Where(mono => mono is ActiveAbility)
+                .Select(ab => (ActiveAbility)ab)
+                .ToList();
+            passiveAbilities = GetComponents<MonoBehaviour>()
+                .Where(mono => mono is PassiveAbility)
+                .Select(ab => (PassiveAbility)ab)
+                .ToList();
+            if ((activeAbilities == null || activeAbilities.Count == 0) && (passiveAbilities == null || passiveAbilities.Count == 0))
+            {
+                throw new Exception("Expected Ability component(s) to be attached to gameObject, found none");
+            }
+        }
         void Awake()
         {
             List<Type> depTypes = ProgramUtils.GetMonoBehavioursOnType(this.GetType());
             List<MonoBehaviour> deps = new List<MonoBehaviour>
-        {
-            (gem = FindObjectOfType(typeof(GlobalEventManager)) as GlobalEventManager),
-            (pf = FindObjectOfType(typeof(Pathfinding)) as Pathfinding),
-            (pos = gameObject.GetComponent<Position>())
-        };
+            {
+                (gem = FindObjectOfType(typeof(GlobalEventManager)) as GlobalEventManager),
+                (pf = FindObjectOfType(typeof(Pathfinding)) as Pathfinding),
+                (elm = FindObjectOfType(typeof(EventLoopManager)) as EventLoopManager),
+                (fm = FindObjectOfType(typeof(FactionManager)) as FactionManager),
+                (pos = gameObject.GetComponent<Position>())
+            };
             if (deps.Contains(null))
             {
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
             CacheAbilities();
-            if (abilities == null || abilities.Count == 0)
-            {
-                throw new Exception("Expected Ability component(s) to be attached to gameObject, found none");
-            }
-            current = abilities[0];
-            gem.StartListening("EndTurn", ResetAbilities);
+            current = activeAbilities[0];
+            gem.StartListening(fm.GetFactionOf(gameObject) + "EndTurn", ResetAbilities);
             gem.StartListening("CHEAT_EndTurn", ResetAbilities);
         }
         void OnDestroy()
         {
-            gem.StopListening("EndTurn", ResetAbilities);
+            gem.StopListening(fm.GetFactionOf(gameObject) + "EndTurn", ResetAbilities);
             gem.StopListening("CHEAT_EndTurn", ResetAbilities);
+
+            elm.CancelEvents(activeAbilities
+                .ConvertAll(ab => (Ability) ab)
+                .Concat(passiveAbilities
+                    .ConvertAll(ab => (Ability)ab))
+                .ToList());
         }
 
-        private void ResetAbilities(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
+        private void ResetAbilities()
         {
-            foreach (Ability ability in abilities)
+            foreach (Ability ability in activeAbilities)
             {
-                ability.Reset(parameters);
+                ability.Reset();
+            }
+            foreach (Ability ability in passiveAbilities)
+            {
+                ability.Reset();
             }
         }
         public void AbilityDone()
@@ -71,7 +100,7 @@ namespace Encounter
         }
         public bool IsAnyAbilityLeft()
         {
-            foreach (Ability ability in abilities)
+            foreach (ActiveAbility ability in activeAbilities)
             {
                 if (!ability.Done())
                 {
@@ -80,9 +109,18 @@ namespace Encounter
             }
             return false;
         }
+        public List<GridContainer> GetTargetTiles(int tx, int ty)
+        {
+            if (current == null)
+            {
+                return new List<GridContainer>();
+            }
+            return current.GetTargetTiles(tx, ty).ConvertAll(p => p.parent);
+        }
+
         public string GetStatus()
         {
-            foreach (Ability ability in abilities)
+            foreach (Ability ability in GetAbilities())
             {
                 if (ability.Status() == "Busy")
                 {
@@ -93,7 +131,7 @@ namespace Encounter
         }
         public void SetFirstAvailableAbility()
         {
-            foreach (Ability ability in abilities)
+            foreach (ActiveAbility ability in activeAbilities)
             {
                 if (!ability.Done())
                 {
@@ -101,44 +139,46 @@ namespace Encounter
                     return;
                 }
             }
-            SetAbility(default(Ability));
-        }
-        public void SetAbility(string abilityName)
-        {
-            foreach (Ability ability in abilities)
-            {
-                if (abilityName == ability.GetAbilityName())
-                {
-                    SetAbility(ability);
-                    return;
-                }
-            }
-            SetAbility(default(Ability));
+            SetAbility(default(ActiveAbility));
         }
         public void SetAbility(int index)
         {
-            if (index < abilities.Count)
+            if (index < activeAbilities.Count)
             {
-                SetAbility(abilities[index]);
+                SetAbility(activeAbilities[index]);
             }
             else
             {
-                SetAbility(default(Ability));
+                SetAbility(default(ActiveAbility));
             }
         }
-        private void SetAbility(Ability ability)
+        private void SetAbility(ActiveAbility ability)
         {
             gem.TriggerEvent("HighlightAbility", gameObject, new List<object> { ability });
             current = ability;
         }
-        public void UseAbility(int tx, int ty)
+        public IEnumerator UseAbility(int tx, int ty)
         {
             if (IsCurrentAbilityDone())
             {
-                return;
+                yield break;
             }
-            List<PathNode> path = GetPathWithinRange(tx, ty);
-            current.UseAbility(path);
+
+            if (!current.IsTargetWithinRange(tx, ty))
+            {
+                yield break;
+            }
+
+            DecisionsEnumerator enu = new DecisionsEnumerator(current.BreakDownAbility(tx, ty));
+            yield return enu;
+            foreach (Decision dec in enu.Result)
+            {
+                if (dec.ability.GetType() is IMovement)
+                {
+                    GlobalDebugManager.Instance.HighlightTiles(dec.path);
+                }
+                elm.AddEvent(dec);
+            }
         }
         public Color GetHighlightColor()
         {
@@ -150,32 +190,20 @@ namespace Encounter
         }
         public List<Ability> GetAbilities()
         {
-            return abilities;
+            return activeAbilities
+                .ConvertAll(ab => (Ability)ab)
+                .Concat(passiveAbilities
+                    .ConvertAll(ab => (Ability)ab))
+                .ToList();
         }
         public List<PathNode> GetTilesWithinRange()
         {
-            return pf.FindPathNodesWithinRange(pos.x, pos.y, current.GetRange(), current.pfconfig);
+            return current.GetTilesWithinRange();
         }
-        public List<PathNode> GetPathWithinRange(int tx, int ty)
+
+        internal List<ActiveAbility> GetActiveAbilities()
         {
-            if (pos.x == tx && pos.y == ty)
-            {
-                throw new Exception("Cannot use ability on self");
-            }
-            List<PathNode> path = pf.FindPathInto2(pos.x, pos.y, tx, ty, current.pfconfig);
-            if (path.Count - 1 <= current.GetRange())
-            {
-                return path;
-            }
-            else if (ProgramDebug.debug)
-            {
-                Debug.Log("Unable to find path from (" + pos.x + "," + pos.y + ") to (" + tx + "," + ty + ")");
-            }
-            return null;
-        }
-        private void CacheAbilities()
-        {
-            abilities = abilityNames.ConvertAll<Ability>(ab => (Ability)gameObject.GetComponent(ab));
+            return activeAbilities;
         }
     }
 }

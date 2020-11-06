@@ -46,38 +46,51 @@ namespace Encounter
         }
         void Start()
         {
-            List<int> ranges = new List<int>();
             foreach (Ability ability in ah.GetAbilities())
             {
                 if (ability.category != "Movement")
                 {
                     continue;
                 }
-                ranges.Add(ability.range);
             }
             attackableConditions.Add(IsPlayerActorCondition);
         }
         public override Analysis GetAnalysis(List<Ability> abilities)
         {
+
+            //foreach(List<Decision> decisions in possibleCoursesOfAction)
+            //{
+            //    foreach(Decision decision in decisions)
+            //    {
+            //        ProgramUtils.PrintDecision(decision);
+            //    }
+            //}
+            List<List<Decision>> possibleCoursesOfAction = GetPossibleCoursesOfAction(abilities);
+            List<(List<Decision>, float)> evaluations = GetEvaluations(possibleCoursesOfAction);
+            List<List<Decision>> filteredCoursesOfAction = evaluations.Take(5).Select(ev => ev.Item1).ToList();
+            return new Analysis(this, filteredCoursesOfAction);
+        }
+        private List<List<Decision>> GetPossibleCoursesOfAction(List<Ability> abilities)
+        {
             Profiler.BeginSample("GetAnalysis: initialize movement/attack abilities");
-            List<MovementAbility> movementAbilities = abilities
-                .Where(ability => ability.GetType().IsSubclassOf(typeof(MovementAbility)))
-                .Select(movementAbility => (MovementAbility)movementAbility)
+            List<ActiveAbility> movementAbilities = abilities
+                .Where(ability => ability is IMovement && ability is ActiveAbility)
+                .Select(movementAbility => (ActiveAbility)movementAbility)
                 .ToList();
-            List<OffensiveAbility> attackAbilities = abilities
-                .Where(ability => ability.GetType().IsSubclassOf(typeof(OffensiveAbility)))
-                .Select(offensiveAbility => (OffensiveAbility)offensiveAbility)
+            List<ActiveAbility> attackAbilities = abilities
+                .Where(ability => ability is IOffensive && ability is ActiveAbility)
+                .Select(offensiveAbility => (ActiveAbility)offensiveAbility)
                 .ToList();
             Profiler.EndSample();
 
             Profiler.BeginSample("GetAnalysis: foreach (MovementAbility movementAbility in movementAbilities)");
             List<List<Decision>> possibleCoursesOfAction = new List<List<Decision>>();
-            foreach (MovementAbility movementAbility in movementAbilities)
+            foreach (ActiveAbility movementAbility in movementAbilities)
             {
                 List<PathNode> movementPossibilities = movementAbility.GetTargetsFrom(pos.x, pos.y);
                 foreach (PathNode tp in movementPossibilities)
                 {
-                    foreach (OffensiveAbility attackAbility in attackAbilities)
+                    foreach (ActiveAbility attackAbility in attackAbilities)
                     {
                         List<PathNode> attackPossibilities = attackAbility.GetTargetsFrom(tp.x, tp.y);
 
@@ -88,6 +101,10 @@ namespace Encounter
                         {
                             List<PathNode> movement = movementAbility.GetPathToTargetFrom(pos.x, pos.y, tp.x, tp.y);
                             List<PathNode> attack = attackAbility.GetPathToTargetFrom(tp.x, tp.y, attackable.x, attackable.y);
+                            if (movement == null || attack == null)
+                            {
+                                Debug.Log($"We fkd up");
+                            }
                             List<Decision> courseOfAction = new List<Decision> {
                             new Decision(movementAbility, movement),
                             new Decision(attackAbility, attack)
@@ -102,7 +119,7 @@ namespace Encounter
             Profiler.BeginSample("GetAnalysis: if (possibleCoursesOfAction.Count == 0)");
             if (possibleCoursesOfAction.Count == 0)
             {
-                foreach (Ability movementAbility in movementAbilities)
+                foreach (ActiveAbility movementAbility in movementAbilities)
                 {
                     List<PathNode> movementPossibilities = movementAbility.GetTargetsFrom(pos.x, pos.y);
                     foreach (PathNode tp in movementPossibilities)
@@ -115,18 +132,16 @@ namespace Encounter
             }
             Profiler.EndSample();
 
-            //foreach(List<Decision> decisions in possibleCoursesOfAction)
-            //{
-            //    foreach(Decision decision in decisions)
-            //    {
-            //        ProgramUtils.PrintDecision(decision);
-            //    }
-            //}
-
-            Profiler.BeginSample("GetAnalysis: SelectStrongestCoursesOfAction");
-            List<(List<Decision>, float)> finalPossibleCoursesOfAction = SelectStrongestCoursesOfAction(possibleCoursesOfAction);
-            Profiler.EndSample();
-            return new Analysis(this, finalPossibleCoursesOfAction.Select(tuple => tuple.Item1).ToList());
+            return possibleCoursesOfAction;
+        }
+        private List<(List<Decision>, float)> GetEvaluations(List<List<Decision>> decisions)
+        {
+            return SelectStrongestCoursesOfAction(decisions);
+        }
+        public override List<(List<Decision>, float)> _GetEvaluations()
+        {
+            List<List<Decision>> possibleCoursesOfAction = GetPossibleCoursesOfAction(ah.GetAbilities());
+            return GetEvaluations(possibleCoursesOfAction);
         }
         private List<(List<Decision>, float)> SelectStrongestCoursesOfAction(List<List<Decision>> coursesOfAction)
         {
@@ -137,20 +152,7 @@ namespace Encounter
             Profiler.EndSample();
             Profiler.EndSample();
 
-            //ProgramUtils.ResetText();
-            //foreach ((List<Decision>, float) eval in evaluation)
-            //{
-            //    foreach (Decision decision in eval.Item1)
-            //    {
-            //        if (decision.ability.GetType().IsSubclassOf(typeof(MovementAbility)))
-            //        {
-            //            PathNode finalPos = decision.path.Last();
-
-            //            ProgramUtils.CreateWorldText(finalPos.x, finalPos.y, eval.Item2.ToString());
-            //        }
-            //    }
-            //}
-            return evaluation/*.Select(tuple => tuple.Item1)*/.Take(5).ToList();
+            return evaluation.ToList();
         }
         private float EvaluateStrength(List<Decision> courseOfAction)
         {
@@ -158,13 +160,13 @@ namespace Encounter
             float damageStrength = 0;
             foreach (Decision decision in courseOfAction)
             {
-                if (decision.ability.GetType().IsSubclassOf(typeof(MovementAbility)))
+                if (decision.ability is IMovement)
                 {
                     Profiler.BeginSample("GetAnalysis: EvaluateMovement");
                     movementStrength = EvaluateMovement(decision);
                     Profiler.EndSample();
                 }
-                else if (decision.ability.GetType().IsSubclassOf(typeof(OffensiveAbility)))
+                else if (decision.ability is IOffensive)
                 {
                     Profiler.BeginSample("GetAnalysis: EvaluateAttack");
                     damageStrength = EvaluateAttack(decision);
@@ -191,7 +193,7 @@ namespace Encounter
             PathNode finalPosition = decision.path.Last();
             if (finalPosition.hasActor)
             {
-                return (decision.ability as OffensiveAbility).GetDamage();
+                return (decision.ability as IOffensive).GetDamage();
             }
             return 0;
         }

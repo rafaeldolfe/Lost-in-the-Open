@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using Utils;
+using Sirenix.OdinInspector;
 
 namespace Encounter
 {
@@ -11,9 +12,14 @@ namespace Encounter
         private GlobalEventManager gem;
         private Position pos;
 
+        [OnValueChangedAttribute("UpdateHealth")]
         public int maxHealth;
-        public int health { get; set; }
-
+        [HideInInspector]
+        public int health;
+        private void UpdateHealth()
+        {
+            health = maxHealth;
+        }
         void Awake()
         {
             List<Type> depTypes = ProgramUtils.GetMonoBehavioursOnType(this.GetType());

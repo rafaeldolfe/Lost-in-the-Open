@@ -36,7 +36,7 @@ namespace Encounter
             gem.StartListening("RegisterEnemyUnits", RegisterEnemyUnits);
             gem.StartListening("PrepareQuitToMainMenu", SaveEncounter);
             gem.StartListening("PrepareQuitToDesktop", SaveEncounter);
-            gem.StartListening("EndAITurn", SaveEncounter);
+            gem.StartListening("EnemyEndTurn", SaveEncounter);
 
             gem.StartListening("Death", CheckEncounterStatus);
         }
@@ -49,7 +49,7 @@ namespace Encounter
             gem.StopListening("RegisterEnemyUnits", RegisterEnemyUnits);
             gem.StopListening("PrepareQuitToMainMenu", SaveEncounter);
             gem.StopListening("PrepareQuitToDesktop", SaveEncounter);
-            gem.StopListening("EndAITurn", SaveEncounter);
+            gem.StopListening("EnemyEndTurn", SaveEncounter);
 
             gem.StopListening("Death", CheckEncounterStatus);
         }
@@ -59,11 +59,13 @@ namespace Encounter
             {
                 gem.TriggerEvent("GameOver", gameObject);
             }
+            playerUnits = playerUnits.Where(unit => unit != null);
             enemyUnits = enemyUnits.Where(unit => unit != null);
             if (enemyUnits.Count() == 1 && enemyUnits.ToList()[0] == invoker)
             {
                 gem.TriggerEvent("EncounterWin", gameObject);
             }
+            SaveEncounter();
         }
         private void SaveEncounter()
         {

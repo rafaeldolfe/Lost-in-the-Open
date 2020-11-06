@@ -5,6 +5,4 @@ using UnityEditor;
 
 namespace WorldMap
 {
-    [CustomPropertyDrawer(typeof(ScenarioFloatDictionary))]
-    public class ScenarioFloatSerializableDictionaryPropertyDrawer : SerializableDictionaryPropertyDrawer { }
 }

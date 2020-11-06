@@ -39,7 +39,7 @@ namespace Encounter
             transparentVersion.a = transparentVersion.a - transparencyCoeff;
 
             gem.StartListening("OfferEndTurn", OfferEndTurnButtonHandler);
-            gem.StartListening("EndTurn", EndTurnHandler);
+            gem.StartListening("PlayerEndTurn", EndTurnHandler);
         }
         void Start()
         {
@@ -48,7 +48,7 @@ namespace Encounter
         void OnDestroy()
         {
             gem.StopListening("OfferEndTurn", OfferEndTurnButtonHandler);
-            gem.StopListening("EndTurn", EndTurnHandler);
+            gem.StopListening("PlayerEndTurn", EndTurnHandler);
         }
         public void ChangeToButtonReleasedSprite()
         {
@@ -60,14 +60,14 @@ namespace Encounter
         }
         public void PressButton()
         {
-            gem.TriggerEvent("EndTurn", gameObject);
+            gem.TriggerEvent("PlayerEndTurn", gameObject);
         }
         public void OfferEndTurnButtonHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
         {
             turnDone = true;
             ShowEndTurnButton();
         }
-        public void EndTurnHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
+        public void EndTurnHandler()
         {
             turnDone = false;
         }

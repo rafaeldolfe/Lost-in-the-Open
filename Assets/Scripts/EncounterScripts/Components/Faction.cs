@@ -35,5 +35,10 @@ namespace Encounter
         {
             return fm.GetFaction(faction);
         }
+
+        internal bool IsPlayerFaction()
+        {
+            return faction == "Player";
+        }
     }
 }

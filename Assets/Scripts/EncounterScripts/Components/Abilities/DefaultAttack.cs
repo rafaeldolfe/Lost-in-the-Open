@@ -10,7 +10,7 @@ namespace Encounter
 {
     [RequireComponent(typeof(AbilitiesHandler))]
     [RequireComponent(typeof(Position))]
-    public class DefaultAttack : OffensiveAbility
+    public class DefaultAttack : ActiveAbility, IOffensive
     {
         private GlobalEventManager gem;
         private Pathfinding pf;
@@ -21,6 +21,7 @@ namespace Encounter
         [OnValueChangedAttribute("UpdateRemainingAttacks")]
         public int numberOfAttacks;
         [SerializeField]
+        [HideInInspector]
         private int remainingAttacks;
         private void UpdateRemainingAttacks()
         {
@@ -30,33 +31,22 @@ namespace Encounter
         {
             List<Type> depTypes = ProgramUtils.GetMonoBehavioursOnType(this.GetType());
             List<MonoBehaviour> deps = new List<MonoBehaviour>
-        {
-            (gem = FindObjectOfType(typeof(GlobalEventManager)) as GlobalEventManager),
-            (pf = FindObjectOfType(typeof(Pathfinding)) as Pathfinding),
-            (ah = gameObject.GetComponent<AbilitiesHandler>()),
-            (pos = gameObject.GetComponent<Position>())
-        };
+            {
+                (gem = FindObjectOfType(typeof(GlobalEventManager)) as GlobalEventManager),
+                (pf = FindObjectOfType(typeof(Pathfinding)) as Pathfinding),
+                (ah = GetComponent<AbilitiesHandler>()),
+                (pos = GetComponent<Position>())
+            };
             if (deps.Contains(null))
             {
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
             category = "Attack";
             highlightColor = new Color(0.75f, 0.29f, 0.22f, 0.78f); // Red
-            pfconfig = new PathfindingConfig(ignoresTerrain: false, ignoresActors: true);
-
-            gem.StartListening("Attack", RegisterAttackHandler);
+            pfconfig = new PathfindingConfig(ignoreAll: true, ignoreLastTile: true, ignoreActors: true);
         }
-
-        public void OnDestroy()
+        public void Attacked()
         {
-            gem.StopListening("Attack", RegisterAttackHandler);
-        }
-        public void RegisterAttackHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
-        {
-            if (invoker != gameObject)
-            {
-                return;
-            }
             remainingAttacks--;
 
             if (Done())
@@ -64,7 +54,7 @@ namespace Encounter
                 ah.AbilityDone();
             }
         }
-        public override void UseAbility(List<PathNode> path)
+        public override IEnumerator UseAbility(List<PathNode> targets)
         {
             if (Done())
             {
@@ -74,11 +64,13 @@ namespace Encounter
             {
                 throw new Exception("Tried to move while actor was busy");
             }
-            PathNode last = path.Last();
 
-            gem.TriggerEvent("Attack", gameObject, new List<object> { defaultAttackDamage }, pos.x, pos.y, last.x, last.y);
+            tilesWithinRange.Clear();
+            gem.TriggerEvent("Attack", gameObject, new List<object> { defaultAttackDamage }, pos.x, pos.y, targets.Last().x, targets.Last().y);
+            Attacked();
+            yield return null;
         }
-        public override int GetRange()
+        public override float GetRange()
         {
             return range;
         }
@@ -90,21 +82,53 @@ namespace Encounter
         {
             return "Idle"; // Always instantaneous attacks (not the case in the future)
         }
-        public override void Reset(List<object> parameters)
+        public override void Reset()
         {
             remainingAttacks = numberOfAttacks;
         }
-        public override float GetDamage()
-        {
-            return defaultAttackDamage;
-        }
         public override List<PathNode> GetTargetsFrom(int x, int y)
         {
-            return pf.FindPathNodesWithinRange(x, y, GetRange(), pfconfig);
+            tilesWithinRange = pf.DijkstraWithinRangeCaching(this, x, y, GetRange(), pfconfig);
+            tilesWithinRange.RemoveAt(0);
+            return tilesWithinRange;
         }
         public override List<PathNode> GetPathToTargetFrom(int x, int y, int tx, int ty)
         {
-            return pf.FindPath(x, y, tx, ty, pfconfig);
+            return pf.FindPathWithinRange(this, x, y, tx, ty);
+        }
+
+        public override IEnumerator BreakDownAbility(int tx, int ty)
+        {
+            yield return new List<Decision> {
+                new Decision(
+                    this, new List<PathNode> { pf.GetNode(tx, ty) }
+                    )
+                };
+        }
+
+        public override List<PathNode> GetTilesWithinRange()
+        {
+            return GetTilesWithinRange(pos.x, pos.y);
+        }
+        private List<PathNode> GetTilesWithinRange(int x, int y)
+        {
+            tilesWithinRange = pf.DijkstraWithinRange(x, y, GetRange(), pfconfig);
+            tilesWithinRange.RemoveAt(0);
+            return tilesWithinRange;
+        }
+
+        public override List<Decision> BreakDownAbility(List<PathNode> path)
+        {
+            return new List<Decision> { new Decision(this, new List<PathNode> { pf.GetNode(path.Last().x, path.Last().y) }) };
+        }
+
+        public override List<PathNode> GetTargetTiles(int tx, int ty)
+        {
+            return new List<PathNode> { pf.GetNode(tx, ty) };
+        }
+        public float GetDamage()
+        {
+            return defaultAttackDamage;
         }
     }
 }

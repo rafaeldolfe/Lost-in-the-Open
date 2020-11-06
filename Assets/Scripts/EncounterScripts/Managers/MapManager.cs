@@ -4,6 +4,7 @@ using UnityEngine;
 using System.Linq;
 using System;
 using Utils;
+using TMPro;
 
 namespace Encounter
 {
@@ -23,7 +24,7 @@ namespace Encounter
             {
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
-            grid = new MapGrid(50, 50, 1, new Vector3(0, 0, 0), (MapGrid g, int x, int y) => new GridContainer(g, x, y));
+            grid = new MapGrid(maxX - minX + 1, maxY - minY + 1, 1, new Vector3(0, 0, 0), (MapGrid g, int x, int y) => new GridContainer(g, x, y));
 
             gem.StartListening("Move", MoveActor);
             gem.StartListening("Death", RemoveActor);
@@ -34,6 +35,31 @@ namespace Encounter
             gem.StopListening("Move", MoveActor);
             gem.StopListening("Death", RemoveActor);
             gem.StopListening("RegisterUnit", RegisterUnit);
+        }
+        private int minX = int.MaxValue;
+        private int minY = int.MaxValue; 
+        private int maxX = int.MinValue;
+        private int maxY = int.MinValue;
+        public void AddBounds(Vector2Int position)
+        {
+
+            if (position.x < minX)
+            {
+                minX = position.x;
+            }
+            if (position.y < minY)
+            {
+                minY = position.y;
+            }
+            if (position.x > maxX)
+            {
+                maxX = position.x;
+            }
+            if (position.x > maxY)
+            {
+                maxY = position.y;
+            }
+
         }
         public void SetWalkability(int x, int y, bool walkability)
         {

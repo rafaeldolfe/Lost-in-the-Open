@@ -7,5 +7,6 @@ namespace Encounter
     public abstract class Behaviour : MonoBehaviour
     {
         public abstract Analysis GetAnalysis(List<Ability> abilities);
+        public abstract List<(List<Decision>, float)> _GetEvaluations();
     }
 }

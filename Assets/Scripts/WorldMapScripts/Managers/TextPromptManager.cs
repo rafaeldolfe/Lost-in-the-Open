@@ -211,7 +211,7 @@ namespace WorldMap
         {
             gem.TriggerEvent("StartEncounter", gameObject, new List<object> { scene, enemies, prompt });
         }
-        private void OptionClicked(GameObject option, List<object> parameters, int x, int y, int tx, int ty)
+        private void OptionClicked(GameObject option, List<object> parameters)
         {
             if (parameters.Count != 1)
             {

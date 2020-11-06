@@ -16,8 +16,29 @@ MonoBehaviour:
   prompts:
   - id: Preamble
     text: You awe at the forest's grandeur.
-    options: []
+    options:
+    - text: Continue
+      precondition:
+        goldCost: 0
+        foodCost: 0
+        showTextRegardless: 0
+      encounter:
+        sceneName: 
+        enemies: []
+        plainEnemies: []
+      pointsTo: Forage
     hasConclusion: 0
     conclusion:
       gold: 0
       food: 0
+      units: []
+      plainUnits: []
+  - id: Forage
+    text: You gather mushroom and berries.
+    options: []
+    hasConclusion: 1
+    conclusion:
+      gold: 0
+      food: 16
+      units: []
+      plainUnits: []

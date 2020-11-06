@@ -21,9 +21,9 @@ namespace Encounter
 		{
 			List<Type> depTypes = ProgramUtils.GetMonoBehavioursOnType(this.GetType());
 			List<MonoBehaviour> deps = new List<MonoBehaviour>
-		{
-			(mm = FindObjectOfType(typeof(MapManager)) as MapManager),
-		};
+			{
+				(mm = FindObjectOfType(typeof(MapManager)) as MapManager),
+			};
 			if (deps.Contains(null))
 			{
 				throw ProgramUtils.DependencyException(deps, depTypes);

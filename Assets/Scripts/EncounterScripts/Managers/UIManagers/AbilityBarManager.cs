@@ -47,7 +47,7 @@ namespace Encounter
         {
             foreach (object ability in parameters)
             {
-                if (!ability.GetType().IsSubclassOf(typeof(Ability)))
+                if (!(ability is Ability))
                 {
                     throw new System.Exception("Expected list of abilities, found something of type " + ability.GetType());
                 }
@@ -120,7 +120,7 @@ namespace Encounter
                 ResetHighlight();
                 return;
             }
-            if (!parameters[0].GetType().IsSubclassOf(typeof(Ability)))
+            if (!(parameters[0] is Ability))
             {
                 throw new System.Exception("Expected subclass of type Ability, found element of type " + parameters[0].GetType());
             }
@@ -139,7 +139,7 @@ namespace Encounter
         {
             foreach (GameObject abilityHighlight in abilityHighlights)
             {
-                if (abilityHighlight.active)
+                if (abilityHighlight.activeInHierarchy)
                 {
                     abilityHighlight.SetActive(false);
                 }

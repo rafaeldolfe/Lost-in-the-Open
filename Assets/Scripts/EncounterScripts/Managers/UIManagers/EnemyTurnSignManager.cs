@@ -14,7 +14,7 @@ namespace Encounter
         public GameObject sign;
         public GameObject signText;
 
-        private float signVisibleTime = 1.0f;
+        private float signVisibleTime = 0.0f;
 
         void Awake()
         {
@@ -29,26 +29,31 @@ namespace Encounter
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
             cm.AttachToCamera(gameObject);
-            gem.StartListening("EndTurn", FlashEndTurnSign);
+            gem.StartListening("PlayerEndTurn", FlashEndTurnSign);
         }
         void OnDestroy()
         {
-            gem.StopListening("EndTurn", FlashEndTurnSign);
+            gem.StopListening("PlayerEndTurn", FlashEndTurnSign);
         }
 
-        private void FlashEndTurnSign(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
+        private void FlashEndTurnSign()
         {
-            StartCoroutine(FlashEndTurnSign());
+            StartCoroutine(ShowEndTurnSign());
         }
 
-        private IEnumerator FlashEndTurnSign()
+        private IEnumerator ShowEndTurnSign()
         {
+            if (signVisibleTime < 0.1f)
+            {
+                gem.TriggerEvent("EnemyBeginTurn", gameObject);
+                yield break;
+            }
             sign.SetActive(true);
             signText.SetActive(true);
             yield return new WaitForSeconds(signVisibleTime);
             sign.SetActive(false);
             signText.SetActive(false);
-            gem.TriggerEvent("BeginAITurn", gameObject);
+            gem.TriggerEvent("EnemyBeginTurn", gameObject);
         }
     }
 }

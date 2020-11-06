@@ -16,22 +16,38 @@ using UnityEngine;
 using System.Linq;
 using System;
 using Utils;
-using UnityEngine.Profiling;
+using ThreadedPathfinding;
 
 namespace Encounter
 {
+    public class CachedPath
+    {
+        public Ability ability;
+        public List<PathNode> path;
+        public int startX, startY, endX, endY;
+
+        public CachedPath(Ability ability, List<PathNode> path, int startX, int startY, int endX, int endY)
+        {
+            this.ability = ability;
+            this.path = path;
+            this.startX = startX;
+            this.startY = startY;
+            this.endX = endX;
+            this.endY = endY;
+        }
+    }
     public class Pathfinding : MonoBehaviour
     {
+
         private MapManager mgm;
         private GlobalEventManager gem;
+        private PathfindingManager pfm;
+
+        private MyCustomTileProvider mcp;
 
         private List<Vector2Int> directions;
 
         private MapGrid grid;
-        private List<PathNode> openList;
-        private List<PathNode> closedList;
-        private RouteCache cache = new RouteCache();
-
 
         void Awake()
         {
@@ -40,189 +56,56 @@ namespace Encounter
             {
                 (mgm = FindObjectOfType(typeof(MapManager)) as MapManager),
                 (gem = FindObjectOfType(typeof(GlobalEventManager)) as GlobalEventManager),
+                (pfm = FindObjectOfType(typeof(PathfindingManager)) as PathfindingManager),
             };
             if (deps.Contains(null))
             {
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
-
             directions = new List<Vector2Int>();
             directions.Add(new Vector2Int(1, 0));
             directions.Add(new Vector2Int(0, 1));
             directions.Add(new Vector2Int(0, -1));
             directions.Add(new Vector2Int(-1, 0));
-
-            gem.StartListening("Move", ClearCache);
-            gem.StartListening("Death", ClearCache);
         }
-
         void Start()
         {
+            // Get a reference to the PathfindingManager object.
+            PathfindingManager manager = PathfindingManager.Instance;
+
+            // Now set the provider object. Replace MyCustomProvider with whatever you named your provider.
             grid = mgm.grid;
-        }
-        private void Update()
-        {
-            if(Input.GetKeyDown("l"))
-            {
-                Debug.Log("counterPathCalls");
-                Debug.Log(counterPathCalls);
-                Debug.Log("counterCacheHit");
-                Debug.Log(counterCacheHit);
-                Debug.Log("counterCacheMiss");
-                Debug.Log(counterCacheMiss);
-            }
+            manager.Provider = new MyCustomTileProvider(mgm.grid);
         }
 
-        private class RouteCache
+        #region Player
+        public List<PathNode> SyncFindPath(int startX, int startY, int endX, int endY, PathfindingConfig pconf)
         {
-            // from, to->list
-            private Dictionary<PathNode, Dictionary<PathNode, List<PathNode>>> routeCache = new Dictionary<PathNode, Dictionary<PathNode, List<PathNode>>>();
-
-            public void Put(PathNode start, PathNode end, List<PathNode> route)
-            {
-                if (routeCache.ContainsKey(start))
-                {
-                    routeCache[start].Add(end, route);
-                }
-                else
-                {
-                    routeCache.Add(start, new Dictionary<PathNode, List<PathNode>>() { { end, route } });
-                }
-            }
-
-            public void CacheEntirePath(List<PathNode> path)
-            {
-                PathNode endNode = path.Last();
-                //Debug.Log("endNode");
-                //Debug.Log(endNode);
-                for (int i = path.Count - 2; i >= 0; i--)
-                {
-                    //Debug.Log("i");
-                    //Debug.Log(i);
-                    //Debug.Log(path.Count);
-                    PathNode current = path[i];
-
-                    if (IsCached(current, endNode)) continue;
-
-                    int length = path.Count - i;       // if i = 9, then length = 10 - 9, 1
-                                                       // if i = 0, then length = 10 - 0, 10
-                    Put(current, endNode, path.GetRange(i, length));
-                }
-            }
-
-            public List<PathNode> Get(PathNode start, PathNode end)
-            {
-                if (IsCached(start, end)) return new List<PathNode>(routeCache[start][end]);
-                else return new List<PathNode>();
-            }
-
-            public bool IsCached(PathNode start, PathNode end)
-            {
-                // check if route already cached
-                if (!routeCache.ContainsKey(start)) return false;
-                if (!routeCache[start].ContainsKey(end)) return false;
-                return true;
-            }
-            public void Clear()
-            {
-                routeCache = new Dictionary<PathNode, Dictionary<PathNode, List<PathNode>>>();
-            }
+            return pfm.SyncFindPath(startX, startY, endX, endY, pconf);
         }
-        private void ClearCache(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
+        public PathEnumerator AsyncFindPath(int startX, int startY, int endX, int endY, PathfindingConfig pconf)
         {
-            cache.Clear();
+            return new PathEnumerator(pfm.GetPath(startX, startY, endX, endY, pconf));
         }
         /// <summary>
-        /// From Red Blob: I'm using an unsorted array for this example, but ideally this
-        /// would be a binary heap.
+        /// This algorithm will always return at least starting PathNode.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        public class PriorityQueue<T>
-        {
-            private List<KeyValuePair<T, float>> elements = new List<KeyValuePair<T, float>>();
-
-            public List<KeyValuePair<T, float>> GetUnderlyingList()
-            {
-                return elements;
-            }
-
-            public PriorityQueue() { }
-            public PriorityQueue(T node, float priority)
-            {
-                Enqueue(node, priority);
-            }
-            public int Count
-            {
-                get { return elements.Count; }
-            }
-
-            public void Enqueue(T item, float priority)
-            {
-                elements.Add(new KeyValuePair<T, float>(item, priority));
-            }
-
-            // Returns the Location that has the lowest priority
-            public T Dequeue()
-            {
-                int bestIndex = 0;
-
-                for (int i = 0; i < elements.Count; i++)
-                {
-                    if (elements[i].Value < elements[bestIndex].Value)
-                    {
-                        bestIndex = i;
-                    }
-                }
-
-                T bestItem = elements[bestIndex].Key;
-                elements.RemoveAt(bestIndex);
-                return bestItem;
-            }
-        }
-
-        /// <summary>
-        /// Concatenate new part of the route with pre-cached route
-        /// </summary>
-        /// <param name="startNode"></param>
-        /// <param name="endNode"></param>
-        /// <param name="pathToCached"></param>
+        /// <param name="startX"></param>
+        /// <param name="startY"></param>
+        /// <param name="range"></param>
+        /// <param name="pfconfig"></param>
         /// <returns></returns>
-        private List<PathNode> MergePathWithCache(PathNode startNode, PathNode endNode, List<PathNode> pathToCached)
-        {
-            PathNode startCachedNode = pathToCached.Last();
-            //Debug.Log("this part of the path:[" + pathToCached.Last() + ", to:" + endNode + "]is already in cache.");
-            //List<PathNode> newRoute = reconstructPath(parentMap, startNode, current);
-            List<PathNode> cachedSubRoute = cache.Get(startCachedNode, endNode);
-
-            pathToCached.RemoveAt(pathToCached.Count - 1);
-
-            List<PathNode> mergedPath = pathToCached.Concat(cachedSubRoute).ToList();
-
-            // remove last element
-            // combine with cached route
-
-            // cache the whole route
-            //this.cache.put(startNode.getLocation(), goal, (LinkedList)newRoute);
-            // return result
-            return mergedPath;
-        }
-
-        public List<PathNode> FindPath(int startX, int startY, int endX, int endY, PathfindingConfig pfconfig = null)
+        public List<PathNode> DijkstraWithinRange(int startX, int startY, float range, PathfindingConfig pfconfig = null)
         {
             if (pfconfig == null)
             {
                 pfconfig = new PathfindingConfig();
             }
-            if (grid.GetGridObject(startX, startY) == null || grid.GetGridObject(endX, endY) == null)
-            {
-                return new List<PathNode>();
-            }
 
             PathNode startNode = grid.GetGridObject(startX, startY).pn;
-            PathNode endNode = grid.GetGridObject(endX, endY).pn;
 
-            openList = new List<PathNode> { startNode };
-            closedList = new List<PathNode>();
+            List<PathNode> openList = new List<PathNode> { startNode };
+            List<PathNode> closedList = new List<PathNode>();
 
             for (int x = 0; x < grid.GetWidth(); x++)
             {
@@ -235,17 +118,18 @@ namespace Encounter
             }
 
             startNode.gCost = 0;
-            startNode.hCost = CalculateDistanceCost(startNode, endNode);
 
             while (openList.Count > 0)
             {
                 PathNode currentNode = GetLowestFCostNode(openList);
-                if (currentNode == endNode)
-                {
-                    return CalculatePath(endNode);
-                }
 
                 openList.Remove(currentNode);
+
+                if (currentNode.gCost > range)
+                {
+                    continue;
+                }
+
                 closedList.Add(currentNode);
 
                 List<PathNode> neighbours;
@@ -253,17 +137,15 @@ namespace Encounter
 
                 neighbours = GetNeighbourListFiltered(currentNode, pfconfig);
 
-                Profiler.BeginSample("Pathfinding: FindPathInto2");
                 foreach (PathNode neighbourNode in neighbours)
                 {
                     if (closedList.Contains(neighbourNode)) continue;
 
-                    int tentativeGCost = currentNode.gCost + CalculateDistanceCost(currentNode, neighbourNode);
+                    float tentativeGCost = currentNode.gCost + GetCostToNeighbour(currentNode, neighbourNode);
                     if (tentativeGCost < neighbourNode.gCost)
                     {
                         neighbourNode.cameFromNode = currentNode;
                         neighbourNode.gCost = tentativeGCost;
-                        neighbourNode.hCost = CalculateDistanceCost(neighbourNode, endNode);
 
                         if (!openList.Contains(neighbourNode))
                         {
@@ -271,569 +153,59 @@ namespace Encounter
                         }
                     }
                 }
-                Profiler.EndSample();
             }
-            // Out of nodes on the openList
-            return new List<PathNode>();
+
+            return closedList;
         }
-        PriorityQueue<PathNode> openQueue;
-        List<PathNode> exploredNodes;
-        int counterPathCalls;
-        int counterCacheHit;
-        int counterCacheMiss;
-        public List<PathNode> FindPathInto3(int startX, int startY, int endX, int endY, PathfindingConfig pfconfig = null)
+
+        #endregion Player
+        #region AI
+
+        public void ResetCaches()
         {
-            if (pfconfig == null)
-            {
-                pfconfig = new PathfindingConfig();
-            }
-            if (grid.GetGridObject(startX, startY) == null || grid.GetGridObject(endX, endY) == null)
-            {
-                return new List<PathNode>();
-            }
-
-            PathNode startNode = grid.GetGridObject(startX, startY).pn;
-            PathNode endNode = grid.GetGridObject(endX, endY).pn;
-
-            for (int x = 0; x < grid.GetWidth(); x++)
-            {
-                for (int y = 0; y < grid.GetHeight(); y++)
-                {
-                    PathNode pathNode = grid.GetGridObject(x, y).pn;
-                    pathNode.path = new List<PathNode> { pathNode };
-                    pathNode.gCost = 99999999;
-                }
-            }
-
-            startNode.gCost = 0;
-            startNode.hCost = CalculateDistanceCost(startNode, endNode);
-
-
-            openQueue = new PriorityQueue<PathNode>(startNode, startNode.fCost);
-            exploredNodes = new List<PathNode>();
-
-            if (cache.IsCached(startNode, endNode))
-            {
-                Debug.Log("Found cache: cache.Get(startNode, endNode)");
-                return cache.Get(startNode, endNode);
-            }
-
-            int timer = DateTime.Now.Millisecond;
-
-            while (openQueue.Count > 0)
-            {
-                PathNode currentNode = openQueue.Dequeue();
-
-                if (cache.IsCached(currentNode, endNode))
-                {
-                    Debug.Log("Found cache: MergePathWithCache");
-                    return MergePathWithCache(startNode, endNode, currentNode.path);
-                }
-
-                Debug.Log(currentNode);
-
-                if (currentNode == endNode)
-                {
-                    Debug.Log("Found current: CacheEntirePath");
-                    cache.CacheEntirePath(currentNode.path);
-                    return currentNode.path;
-                }
-                else
-                {
-                    foreach (PathNode adj in GetAdjacentNodes(endNode.x, endNode.y))
-                    {
-                        if (adj == currentNode)
-                        {
-                            Debug.Log("Found adjacent: CacheEntirePath");
-                            List<PathNode> finalPath = currentNode.path;
-                            finalPath.Add(endNode);
-                            //finalPath.ForEach(Debug.Log);
-                            cache.CacheEntirePath(finalPath);
-                            return finalPath;
-                        }
-                    }
-                }
-
-                exploredNodes.Add(currentNode);
-
-                List<PathNode> neighbours = GetNeighbourListFiltered(currentNode, pfconfig);
-                Profiler.BeginSample("Pathfinding: FindPathInto2");
-                Debug.Log("Neighbours!");
-                //neighbours.ForEach(Debug.Log);
-                foreach (PathNode neighbourNode in neighbours)
-                {
-                    if (exploredNodes.Contains(neighbourNode)) continue;
-
-                    int tentativeGCost = currentNode.gCost + CalculateDistanceCost(currentNode, neighbourNode);
-                    if (tentativeGCost < neighbourNode.gCost)
-                    {
-                        neighbourNode.path = new List<PathNode>(currentNode.path);
-                        neighbourNode.path.Add(neighbourNode);
-                        neighbourNode.gCost = tentativeGCost;
-                        neighbourNode.hCost = CalculateDistanceCost(neighbourNode, endNode);
-
-                        openQueue.Enqueue(neighbourNode, neighbourNode.fCost);
-                    }
-                }
-                Profiler.EndSample();
-            }
-            Debug.Log("OpenQueue!");
-            Debug.Log("ExploredBoys!");
-            //exploredNodes.ForEach(Debug.Log);
-            Debug.Log("Didn't find shit lol");
-            return null;
+            cachedDijkstraPaths.Clear();
+            prevDijkstraCachings.Clear();
         }
-        private void ResetNode(PathNode node)
+        public List<PathNode> FindPathWithinRange(Ability ability, int startX, int startY, int endX, int endY)
         {
-            node.path = new List<PathNode>();
-            node.gCost = 99999999;
-
+            return GetCached(ability, startX, startY, endX, endY);
         }
-        private void ResetNodes(HashSet<PathNode> visited)
+        public List<CachedPath> cachedDijkstraPaths = new List<CachedPath>();
+        public List<(Ability, int, int, float)> prevDijkstraCachings = new List<(Ability, int, int, float)>();
+        private void CachePaths(Ability ability, List<PathNode> nodes)
         {
-            Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-            foreach (PathNode node in visited)
+            foreach (PathNode node in nodes)
             {
-                node.path = new List<PathNode>();
-                node.gCost = 99999999;
+                List<PathNode> path = CalculatePath(node);
+                PathNode first = path.First();
+                PathNode last = path.Last();
+                CachedPath cpath = new CachedPath(ability, path, first.x, first.y, last.x, last.y);
+                cachedDijkstraPaths.Add(cpath);
             }
-            Profiler.EndSample();
         }
-        private void ResetNodes(List<KeyValuePair<PathNode, float>> path)
+        private List<PathNode> GetCached(Ability ability, int startX, int startY, int endX, int endY)
         {
-            Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-            foreach (KeyValuePair<PathNode, float> node in path)
-            {
-                node.Key.path = new List<PathNode>();
-                node.Key.gCost = 99999999;
-            }
-            Profiler.EndSample();
-        }
-        private void ResetNodes(List<PathNode> path)
-        {
-            Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-            foreach (PathNode node in path)
-            {
-                node.path = new List<PathNode>();
-                node.gCost = 99999999;
-            }
-            Profiler.EndSample();
-        }
-        public List<PathNode> FindPathInto2(int startX, int startY, int endX, int endY, PathfindingConfig pfconfig = null)
-        {
-            Profiler.BeginSample("Pathfinding: others");
-            if (pfconfig == null)
-            {
-                pfconfig = new PathfindingConfig();
-            }
-            if (grid.GetGridObject(startX, startY) == null || grid.GetGridObject(endX, endY) == null)
+            CachedPath cpath = cachedDijkstraPaths.Find(c => c.ability == ability && c.startX == startX && c.startY == startY && c.endX == endX && c.endY == endY);
+            if (cpath == null)
             {
                 return null;
             }
-
-            PathNode startNode = grid.GetGridObject(startX, startY).pn;
-            PathNode endNode = grid.GetGridObject(endX, endY).pn;
-
-            counterPathCalls++;
-            Profiler.EndSample();
-
-            if (cache.IsCached(startNode, endNode))
+            else
             {
-                Profiler.BeginSample("Pathfinding: IsCached hit at start");
-                counterCacheHit++;
-                List<PathNode> cached = cache.Get(startNode, endNode);
-                Profiler.EndSample();
-                //Debug.Log($"Found cache, startNode to endNode: {startNode} to {endNode}");
-                return cached;
+                return cpath.path;
             }
-            Profiler.BeginSample("Pathfinding: others");
-            startNode.path = new List<PathNode> { startNode };
-            startNode.gCost = 0;
-            Profiler.EndSample();
-            Profiler.BeginSample("Pathfinding: CalculateDistanceCost(startNode, endNode);");
-            startNode.hCost = CalculateDistanceCost(startNode, endNode);
-            Profiler.EndSample();
-
-            Profiler.BeginSample("Pathfinding: others");
-            openQueue = new PriorityQueue<PathNode>(startNode, startNode.fCost);
-            HashSet<PathNode> visited = new HashSet<PathNode>();
-            Profiler.EndSample();
-
-            while (openQueue.Count > 0)
-            {
-                Profiler.BeginSample("Pathfinding: openQueue.Dequeue()");
-                PathNode currentNode = openQueue.Dequeue();
-                Profiler.EndSample();
-                if (cache.IsCached(currentNode, endNode))
-                {
-                    Profiler.BeginSample("Pathfinding: IsCached hit merged");
-                    counterCacheHit++;
-                    List<PathNode> mergedPath = MergePathWithCache(startNode, endNode, currentNode.path);
-                    cache.CacheEntirePath(mergedPath);
-                    //Debug.Log("Found cache: MergePathWithCache");
-                    //mergedPath.ForEach(Debug.Log);
-                    Profiler.EndSample();
-                    //ResetNodes(openList);
-                    //ResetNodes(closedList);
-                    Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-                    ResetNode(currentNode);
-                    ResetNodes(openQueue.GetUnderlyingList());
-                    ResetNodes(visited);
-                    Profiler.EndSample();
-                    return mergedPath;
-                }
-                foreach (PathNode adj in GetAdjacentNodes(endNode.x, endNode.y))
-                {
-                    if (adj == currentNode)
-                    {
-                        Profiler.BeginSample("Pathfinding: IsCached miss");
-                        counterCacheMiss++;
-                        //Debug.Log("Found adjacent: CacheEntirePath");
-                        List<PathNode> finalPath = currentNode.path;
-                        finalPath.Add(endNode);
-                        //finalPath.ForEach(Debug.Log);
-                        cache.CacheEntirePath(finalPath);
-                        Profiler.EndSample();
-                        Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-                        ResetNode(currentNode);
-                        ResetNodes(openQueue.GetUnderlyingList());
-                        ResetNodes(visited);
-                        Profiler.EndSample();
-                        return finalPath;
-                    }
-                }
-
-                Profiler.BeginSample("Pathfinding: others");
-                visited.Add(currentNode);
-                Profiler.EndSample();
-
-                Profiler.BeginSample("Pathfinding: foreach neighbours loop");
-                List<PathNode> neighbours = GetNeighbourListFiltered(currentNode, pfconfig);
-
-                foreach (PathNode neighbourNode in neighbours)
-                {
-                    Profiler.BeginSample("Pathfinding: HashSet contains?");
-                    bool prevvisited = visited.Contains(neighbourNode);
-                    Profiler.EndSample();
-                    if (prevvisited) continue;
-
-                    Profiler.BeginSample("Pathfinding: others");
-                    int tentativeGCost = currentNode.gCost + CalculateDistanceCost(currentNode, neighbourNode);
-                    Profiler.EndSample();
-                    if (tentativeGCost < neighbourNode.gCost)
-                    {
-                        Profiler.BeginSample("Pathfinding: int tentativeGCost =");
-                        neighbourNode.gCost = tentativeGCost;
-                        neighbourNode.hCost = CalculateDistanceCost(neighbourNode, endNode);
-                        Profiler.EndSample();
-                        Profiler.BeginSample("!neighbourNode.path.Any()");
-                        if (!neighbourNode.path.Any())
-                        {
-                            openQueue.Enqueue(neighbourNode, neighbourNode.fCost);
-                        }
-                        Profiler.EndSample();
-                        Profiler.BeginSample("Pathfinding: copy neighbourNode path");
-                        neighbourNode.path = new List<PathNode>(currentNode.path) { neighbourNode };
-                        Profiler.EndSample();
-                    }
-                }
-                Profiler.EndSample();
-            }
-            Profiler.BeginSample("Pathfinding: failed to find path!");
-            Profiler.EndSample();
-            return null;
         }
-        //public List<PathNode> FindPathInto2(int startX, int startY, int endX, int endY, PathfindingConfig pfconfig = null)
-        //{
-        //    if (pfconfig == null)
-        //    {
-        //        pfconfig = new PathfindingConfig();
-        //    }
-        //    if (grid.GetGridObject(startX, startY) == null || grid.GetGridObject(endX, endY) == null)
-        //    {
-        //        return null;
-        //    }
-
-
-        //    PathNode startNode = grid.GetGridObject(startX, startY).pn;
-        //    PathNode endNode = grid.GetGridObject(endX, endY).pn;
-
-        //    counterPathCalls++;
-
-        //    if (cache.IsCached(startNode, endNode))
-        //    {
-        //        Profiler.BeginSample("Pathfinding: IsCached hit");
-        //        counterCacheHit++;
-        //        List<PathNode> cached = cache.Get(startNode, endNode);
-        //        Profiler.EndSample();
-        //        //Debug.Log($"Found cache, startNode to endNode: {startNode} to {endNode}");
-        //        return cached;
-        //    }
-
-        //    openList = new List<PathNode> { startNode };
-        //    closedList = new List<PathNode>();
-
-        //    //for (int x = 0; x < grid.GetWidth(); x++)
-        //    //{
-        //    //    for (int y = 0; y < grid.GetHeight(); y++)
-        //    //    {
-        //    //        Profiler.BeginSample("Pathfinding: GetGridObject");
-        //    //        PathNode pathNode = grid.GetGridObject(x, y).pn;
-        //    //        Profiler.EndSample();
-        //    //        Profiler.BeginSample("Pathfinding: new List<PathNode> { pathNode };");
-        //    //        pathNode.path = new List<PathNode> { pathNode };
-        //    //        Profiler.EndSample();
-        //    //        Profiler.BeginSample("Pathfinding: gCost = 9999999");
-        //    //        pathNode.gCost = 99999999;
-        //    //        Profiler.EndSample();
-        //    //    }
-        //    //}
-        //    startNode.path = new List<PathNode>();
-        //    startNode.gCost = 0;
-        //    Profiler.BeginSample("Pathfinding: CalculateDistanceCost(startNode, endNode);");
-        //    startNode.hCost = CalculateDistanceCost(startNode, endNode);
-        //    Profiler.EndSample();
-
-        //    while (openList.Count > 0)
-        //    {
-        //        Profiler.BeginSample("Pathfinding: GetLowestFCostNode(openList);");
-        //        PathNode currentNode = GetLowestFCostNode(openList);
-        //        Profiler.EndSample();
-        //        if (cache.IsCached(currentNode, endNode))
-        //        {
-        //            Profiler.BeginSample("Pathfinding: IsCached hit");
-        //            counterCacheHit++;
-        //            List<PathNode> mergedPath = MergePathWithCache(startNode, endNode, currentNode.path);
-        //            cache.CacheEntirePath(mergedPath);
-        //            //Debug.Log("Found cache: MergePathWithCache");
-        //            //mergedPath.ForEach(Debug.Log);
-        //            Profiler.EndSample();
-        //            //ResetNodes(openList);
-        //            //ResetNodes(closedList);
-        //            Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-        //            ResetNodes(openList);
-        //            ResetNodes(closedList);
-        //            Profiler.EndSample();
-        //            return mergedPath;
-        //        }
-        //        //if (currentNode == endNode)
-        //        //{
-        //        //    Profiler.BeginSample("Pathfinding: IsCached miss");
-        //        //    counterCacheMiss++;
-        //        //    //Debug.Log("Found current: CacheEntirePath");
-        //        //    cache.CacheEntirePath(currentNode.path);
-        //        //    Profiler.EndSample();
-        //        //    ResetNodes(openList);
-        //        //    ResetNodes(closedList);
-        //        //    return currentNode.path;
-        //        //}
-        //        foreach (PathNode adj in GetAdjacentNodes(endNode.x, endNode.y))
-        //        {
-        //            if (adj == currentNode)
-        //            {
-        //                Profiler.BeginSample("Pathfinding: IsCached miss");
-        //                counterCacheMiss++;
-        //                //Debug.Log("Found adjacent: CacheEntirePath");
-        //                List<PathNode> finalPath = currentNode.path;
-        //                finalPath.Add(endNode);
-        //                //finalPath.ForEach(Debug.Log);
-        //                cache.CacheEntirePath(finalPath);
-        //                Profiler.EndSample();
-        //                Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-        //                ResetNodes(openList);
-        //                ResetNodes(closedList);
-        //                Profiler.EndSample();
-        //                return finalPath;
-        //            }
-        //        }
-
-        //        openList.Remove(currentNode);
-        //        closedList.Add(currentNode);
-
-        //        Profiler.BeginSample("Pathfinding: foreach neighbours loop");
-        //        List<PathNode> neighbours = GetNeighbourListFiltered(currentNode, pfconfig);
-
-        //        foreach (PathNode neighbourNode in neighbours)
-        //        {
-        //            if (closedList.Contains(neighbourNode)) continue;
-
-
-
-        //            int tentativeGCost = currentNode.gCost + CalculateDistanceCost(currentNode, neighbourNode);
-        //            if (tentativeGCost < neighbourNode.gCost)
-        //            {
-        //                neighbourNode.path = new List<PathNode>(currentNode.path);
-        //                neighbourNode.path.Add(neighbourNode);
-        //                neighbourNode.gCost = tentativeGCost;
-        //                neighbourNode.hCost = CalculateDistanceCost(neighbourNode, endNode);
-
-        //                if (!openList.Contains(neighbourNode))
-        //                {
-        //                    openList.Add(neighbourNode);
-        //                }
-        //            }
-        //        }
-        //        Profiler.EndSample();
-        //    }
-        //    //Debug.Log("Found no path");
-        //    // Out of nodes on the openList
-        //    return new List<PathNode>();
-        //}
-        //public List<PathNode> FindPathInto2(int startX, int startY, int endX, int endY, PathfindingConfig pfconfig = null)
-        //{
-        //    if (pfconfig == null)
-        //    {
-        //        pfconfig = new PathfindingConfig();
-        //    }
-        //    if (grid.GetGridObject(startX, startY) == null || grid.GetGridObject(endX, endY) == null)
-        //    {
-        //        return null;
-        //    }
-
-
-        //    PathNode startNode = grid.GetGridObject(startX, startY).pn;
-        //    PathNode endNode = grid.GetGridObject(endX, endY).pn;
-
-        //    counterPathCalls++;
-
-        //    if (cache.IsCached(startNode, endNode))
-        //    {
-        //        Profiler.BeginSample("Pathfinding: IsCached hit");
-        //        counterCacheHit++;
-        //        List<PathNode> cached = cache.Get(startNode, endNode);
-        //        Profiler.EndSample();
-        //        //Debug.Log($"Found cache, startNode to endNode: {startNode} to {endNode}");
-        //        return cached;
-        //    }
-
-        //    openList = new List<PathNode> { startNode };
-        //    closedList = new List<PathNode>();
-
-        //    //for (int x = 0; x < grid.GetWidth(); x++)
-        //    //{
-        //    //    for (int y = 0; y < grid.GetHeight(); y++)
-        //    //    {
-        //    //        Profiler.BeginSample("Pathfinding: GetGridObject");
-        //    //        PathNode pathNode = grid.GetGridObject(x, y).pn;
-        //    //        Profiler.EndSample();
-        //    //        Profiler.BeginSample("Pathfinding: new List<PathNode> { pathNode };");
-        //    //        pathNode.path = new List<PathNode> { pathNode };
-        //    //        Profiler.EndSample();
-        //    //        Profiler.BeginSample("Pathfinding: gCost = 9999999");
-        //    //        pathNode.gCost = 99999999;
-        //    //        Profiler.EndSample();
-        //    //    }
-        //    //}
-        //    startNode.path = new List<PathNode>();
-        //    startNode.gCost = 0;
-        //    Profiler.BeginSample("Pathfinding: CalculateDistanceCost(startNode, endNode);");
-        //    startNode.hCost = CalculateDistanceCost(startNode, endNode);
-        //    Profiler.EndSample();
-
-        //    while (openList.Count > 0)
-        //    {
-        //        Profiler.BeginSample("Pathfinding: GetLowestFCostNode(openList);");
-        //        PathNode currentNode = GetLowestFCostNode(openList);
-        //        Profiler.EndSample();
-        //        if (cache.IsCached(currentNode, endNode))
-        //        {
-        //            Profiler.BeginSample("Pathfinding: IsCached hit");
-        //            counterCacheHit++;
-        //            List<PathNode> mergedPath = MergePathWithCache(startNode, endNode, currentNode.path);
-        //            cache.CacheEntirePath(mergedPath);
-        //            //Debug.Log("Found cache: MergePathWithCache");
-        //            //mergedPath.ForEach(Debug.Log);
-        //            Profiler.EndSample();
-        //            //ResetNodes(openList);
-        //            //ResetNodes(closedList);
-        //            Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-        //            ResetNodes(openList);
-        //            ResetNodes(closedList);
-        //            Profiler.EndSample();
-        //            return mergedPath;
-        //        }
-        //        //if (currentNode == endNode)
-        //        //{
-        //        //    Profiler.BeginSample("Pathfinding: IsCached miss");
-        //        //    counterCacheMiss++;
-        //        //    //Debug.Log("Found current: CacheEntirePath");
-        //        //    cache.CacheEntirePath(currentNode.path);
-        //        //    Profiler.EndSample();
-        //        //    ResetNodes(openList);
-        //        //    ResetNodes(closedList);
-        //        //    return currentNode.path;
-        //        //}
-        //        foreach (PathNode adj in GetAdjacentNodes(endNode.x, endNode.y))
-        //        {
-        //            if (adj == currentNode)
-        //            {
-        //                Profiler.BeginSample("Pathfinding: IsCached miss");
-        //                counterCacheMiss++;
-        //                //Debug.Log("Found adjacent: CacheEntirePath");
-        //                List<PathNode> finalPath = currentNode.path;
-        //                finalPath.Add(endNode);
-        //                //finalPath.ForEach(Debug.Log);
-        //                cache.CacheEntirePath(finalPath);
-        //                Profiler.EndSample();
-        //                Profiler.BeginSample("Pathfinding: Resetting PathNodes");
-        //                ResetNodes(openList);
-        //                ResetNodes(closedList);
-        //                Profiler.EndSample();
-        //                return finalPath;
-        //            }
-        //        }
-
-        //        openList.Remove(currentNode);
-        //        closedList.Add(currentNode);
-
-        //        Profiler.BeginSample("Pathfinding: foreach neighbours loop");
-        //        List<PathNode> neighbours = GetNeighbourListFiltered(currentNode, pfconfig);
-
-        //        foreach (PathNode neighbourNode in neighbours)
-        //        {
-        //            if (closedList.Contains(neighbourNode)) continue;
-
-
-
-        //            int tentativeGCost = currentNode.gCost + CalculateDistanceCost(currentNode, neighbourNode);
-        //            if (tentativeGCost < neighbourNode.gCost)
-        //            {
-        //                neighbourNode.path = new List<PathNode>(currentNode.path);
-        //                neighbourNode.path.Add(neighbourNode);
-        //                neighbourNode.gCost = tentativeGCost;
-        //                neighbourNode.hCost = CalculateDistanceCost(neighbourNode, endNode);
-
-        //                if (!openList.Contains(neighbourNode))
-        //                {
-        //                    openList.Add(neighbourNode);
-        //                }
-        //            }
-        //        }
-        //        Profiler.EndSample();
-        //    }
-        //    //Debug.Log("Found no path");
-        //    // Out of nodes on the openList
-        //    return new List<PathNode>();
-        //}
-
-        public List<PathNode> FindPathInto(int startX, int startY, int endX, int endY, PathfindingConfig pfconfig = null)
+        public List<PathNode> DijkstraWithinRangeCaching(Ability ability, int startX, int startY, float range, PathfindingConfig pfconfig = null)
         {
             if (pfconfig == null)
             {
                 pfconfig = new PathfindingConfig();
             }
-            if (grid.GetGridObject(startX, startY) == null || grid.GetGridObject(endX, endY) == null)
-            {
-                new List<PathNode>();
-            }
 
             PathNode startNode = grid.GetGridObject(startX, startY).pn;
-            PathNode endNode = grid.GetGridObject(endX, endY).pn;
 
-            if (cache.IsCached(startNode, endNode)) return cache.Get(startNode, endNode);
-
-            openList = new List<PathNode> { startNode };
-            closedList = new List<PathNode>();
+            List<PathNode> openList = new List<PathNode> { startNode };
+            List<PathNode> closedList = new List<PathNode>();
 
             for (int x = 0; x < grid.GetWidth(); x++)
             {
@@ -846,32 +218,18 @@ namespace Encounter
             }
 
             startNode.gCost = 0;
-            startNode.hCost = CalculateDistanceCost(startNode, endNode);
 
             while (openList.Count > 0)
             {
                 PathNode currentNode = GetLowestFCostNode(openList);
 
-                //if (cache.IsCached(currentNode, endNode)) return MergePathWithCache(goal, startNode, parentMap, current);
-                
-                if (currentNode == endNode)
+                openList.Remove(currentNode);
+
+                if (currentNode.gCost > range)
                 {
-                    return CalculatePath(currentNode);
-                }
-                else
-                {
-                    foreach (PathNode adj in GetAdjacentNodes(endNode.x, endNode.y))
-                    {
-                        if (adj == currentNode)
-                        {
-                            List<PathNode> final = CalculatePath(adj);
-                            final.Add(endNode);
-                            return final;
-                        }
-                    }
+                    continue;
                 }
 
-                openList.Remove(currentNode);
                 closedList.Add(currentNode);
 
                 List<PathNode> neighbours;
@@ -883,12 +241,11 @@ namespace Encounter
                 {
                     if (closedList.Contains(neighbourNode)) continue;
 
-                    int tentativeGCost = currentNode.gCost + CalculateDistanceCost(currentNode, neighbourNode);
+                    float tentativeGCost = currentNode.gCost + GetCostToNeighbour(currentNode, neighbourNode);
                     if (tentativeGCost < neighbourNode.gCost)
                     {
                         neighbourNode.cameFromNode = currentNode;
                         neighbourNode.gCost = tentativeGCost;
-                        neighbourNode.hCost = CalculateDistanceCost(neighbourNode, endNode);
 
                         if (!openList.Contains(neighbourNode))
                         {
@@ -897,59 +254,25 @@ namespace Encounter
                     }
                 }
             }
-            // Out of nodes on the openList
-            return new List<PathNode>(); ;
-        }
-        public List<PathNode> FindPathNodesWithinRange(int startX, int startY, int range, PathfindingConfig pfconfig = null)
-        {
-            if (pfconfig == null)
+
+
+            if (!prevDijkstraCachings.Contains((ability, startX, startY, range)))
             {
-                pfconfig = new PathfindingConfig();
+                CachePaths(ability, closedList);
+                prevDijkstraCachings.Add((ability, startX, startY, range));
             }
-            List<PathNode> openList = new List<PathNode> { GetNode(startX, startY) };
-            List<PathNode> removeList = new List<PathNode>();
-            List<PathNode> addList = new List<PathNode>();
-            List<PathNode> finalList = new List<PathNode>();
-            List<PathNode> closedList = new List<PathNode>();
-            int counter = 0;
 
-            while (counter < range)
-            {
-                foreach (PathNode node in openList)
-                {
-                    closedList.Add(node);
-                    removeList.Add(node);
-                    List<PathNode> neighbours;
-
-                    neighbours = GetNeighbourListFiltered(node, pfconfig);
-
-                    foreach (PathNode neighbour in neighbours)
-                    {
-                        if (closedList.Contains(neighbour)) continue;
-                        if (openList.Contains(neighbour)) continue;
-                        if (addList.Contains(neighbour)) continue;
-
-                        finalList.Add(neighbour);
-                        addList.Add(neighbour);
-                    }
-                }
-                foreach (PathNode node in removeList)
-                {
-                    openList.Remove(node);
-                }
-                foreach (PathNode node in addList)
-                {
-                    openList.Add(node);
-                }
-                removeList = new List<PathNode>();
-                addList = new List<PathNode>();
-                counter++;
-            }
-            return finalList;
+            return closedList;
         }
+
+        #endregion AI
 
         public PathNode GetNode(int x, int y)
         {
+            if (grid.GetGridObject(x,y) == null)
+            {
+                return null;
+            }
             return grid.GetGridObject(x, y).pn;
         }
         public List<PathNode> GetAdjacentNodes(int x, int y)
@@ -979,48 +302,86 @@ namespace Encounter
             }
             return true;
         }
-        public List<PathNode> GetPathToClosestActor(int fromX, int fromY, List<GameObject> actors)
-        {
-            List<PathNode> closestPath = new List<PathNode>();
-            int minDistance = int.MaxValue;
-            foreach (GameObject actor in actors)
-            {
-                Position actorPos = actor.GetComponent<Position>();
-                if (actorPos == null)
-                {
-                    throw ProgramUtils.MissingComponentException(typeof(Position));
-                }
-                List<PathNode> path = FindPath(fromX, fromY, actorPos.x, actorPos.y);
-                if (path.Count == 0)
-                {
-                    continue;
-                }
-                if (path.Count - 1 < minDistance)
-                {
-                    closestPath = path;
-                    minDistance = closestPath.Count - 1;
-                }
-            }
-            return closestPath;
-        }
-        public PathNode GetClosestPlayerActorPosition(List<GameObject> actors, int x, int y)
-        {
-            return GetPathToClosestActor(x, y, actors).Last();
-        }
+        private bool left, right, below, above;
         private List<PathNode> GetNeighbourListFiltered(PathNode currentNode, PathfindingConfig pfconfig)
         {
             List<PathNode> neighbourList = new List<PathNode>();
 
-            foreach (Vector2Int dir in directions)
+            PathNode neighbour;
+
+            left = false;
+            neighbour = GetNode(currentNode.x - 1, currentNode.y);
+            if (neighbour != null && neighbour.CheckConditions(pfconfig))
             {
-                if (currentNode.x + dir.x >= 0 && currentNode.x + dir.x < grid.GetWidth() &&
-                    currentNode.y + dir.y >= 0 && currentNode.y + dir.y < grid.GetHeight())
+                neighbourList.Add(neighbour);
+                left = true;
+            }
+
+            // Right
+            right = false;
+            neighbour = GetNode(currentNode.x + 1, currentNode.y);
+            if (neighbour != null && neighbour.CheckConditions(pfconfig))
+            {
+                neighbourList.Add(neighbour);
+                right = true;
+            }
+
+            // Above
+            above = false;
+            neighbour = GetNode(currentNode.x, currentNode.y + 1);
+            if (neighbour != null && neighbour.CheckConditions(pfconfig))
+            {
+                neighbourList.Add(neighbour);
+                above = true;
+            }
+
+            // Below
+            below = false;
+            neighbour = GetNode(currentNode.x, currentNode.y - 1);
+            if (neighbour != null && neighbour.CheckConditions(pfconfig))
+            {
+                neighbourList.Add(neighbour);
+                below = true;
+            }
+
+
+            // Above-Left
+            if (left && above)
+            {
+                neighbour = GetNode(currentNode.x - 1, currentNode.y + 1);
+                if (neighbour != null && neighbour.CheckConditions(pfconfig))
                 {
-                    PathNode neighbour = GetNode(currentNode.x + dir.x, currentNode.y + dir.y);
-                    if (neighbour.CheckConditions(pfconfig))
-                    {
-                        neighbourList.Add(neighbour);
-                    }
+                    neighbourList.Add(neighbour);
+                }
+            }
+
+            // Above-Right
+            if (right && above)
+            {
+                neighbour = GetNode(currentNode.x + 1, currentNode.y + 1);
+                if (neighbour != null && neighbour.CheckConditions(pfconfig))
+                {
+                    neighbourList.Add(neighbour);
+                }
+            }
+
+            // Below-Left
+            if (left && below)
+            {
+                neighbour = GetNode(currentNode.x - 1, currentNode.y - 1);
+                if (neighbour != null && neighbour.CheckConditions(pfconfig))
+                {
+                    neighbourList.Add(neighbour);
+                }
+            }
+
+            // Below-Right
+            if (right && below)
+            {
+                neighbour = GetNode(currentNode.x + 1, currentNode.y - 1);
+                if (neighbour != null && neighbour.CheckConditions(pfconfig))
+                {
+                    neighbourList.Add(neighbour);
                 }
             }
 
@@ -1039,14 +400,23 @@ namespace Encounter
             path.Reverse();
             return path;
         }
-        private const int MOVE_STRAIGHT_COST = 10;
-        private const int MOVE_DIAGONAL_COST = 14;
-        private int CalculateDistanceCost(PathNode a, PathNode b)
+        public int ManhattanDistance(int x, int y, int tx, int ty)
+        {
+            return Mathf.Abs(x - tx) + Mathf.Abs(y - ty);
+        }
+        private float CalculateDistanceCost(PathNode a, PathNode b)
         {
             int xDistance = Mathf.Abs(a.x - b.x);
             int zDistance = Mathf.Abs(a.y - b.y);
             int remaining = Mathf.Abs(xDistance - zDistance);
-            return MOVE_DIAGONAL_COST * Mathf.Min(xDistance, zDistance) + MOVE_STRAIGHT_COST * remaining;
+            return Constants.MOVE_DIAGONAL_COST * Mathf.Min(xDistance, zDistance) + Constants.MOVE_STRAIGHT_COST * remaining;
+        }
+        private float GetCostToNeighbour(PathNode a, PathNode b)
+        {
+            int xDistance = Mathf.Abs(a.x - b.x);
+            int zDistance = Mathf.Abs(a.y - b.y);
+            int remaining = Mathf.Abs(xDistance - zDistance);
+            return Constants.MOVE_DIAGONAL_COST * Mathf.Min(xDistance, zDistance) * b.walkIntoCost + Constants.MOVE_STRAIGHT_COST * remaining * b.walkIntoCost;
         }
         private PathNode GetLowestFCostNode(List<PathNode> pathNodeList)
         {

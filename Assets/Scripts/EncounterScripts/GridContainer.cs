@@ -25,6 +25,19 @@ namespace Encounter
             this.pn = new PathNode(this, x, y);
         }
 
+        public bool IsTileWalkable(PathfindingConfig pconf)
+        {
+            if (!pconf.ignoreActors && pn.hasActor)
+            {
+                return false;
+            }
+            if (!pconf.ignoreAll && !pn.isWalkable)
+            {
+                return false;
+            }
+            return true;
+        }
+
         public void SetActor(GameObject actor)
         {
             this.actor = actor;

@@ -11,25 +11,36 @@ namespace Encounter
     {
         public Color highlightColor { get; set; }
         [SerializeField]
-        private Sprite image;
+        private Sprite image = null;
 
         [HideInInspector]
         public string category;
         [HideInInspector]
         public PathfindingConfig pfconfig;
-        public int range;
+        public float range;
+        protected List<PathNode> tilesWithinRange = new List<PathNode>();
 
         public abstract bool Done();
         public abstract string Status();
-        public abstract void Reset(List<object> parameters);
-        public abstract void UseAbility(List<PathNode> path);
-        public abstract int GetRange();
-        public abstract List<PathNode> GetTargetsFrom(int x, int y);
-        public abstract List<PathNode> GetPathToTargetFrom(int x, int y, int tx, int ty);
-        public string GetAbilityName()
-        {
-            return this.GetType().ToString();
-        }
+        public abstract void Reset();
+        public abstract IEnumerator UseAbility(List<PathNode> targets);
+        /// <summary>
+        /// Reason for BreakDownAbility having this complicated List of decisions, is because in the future there might be AOE abilities.
+        /// These abilities may essentially perform 1 ability on several locations simultaneously.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public abstract IEnumerator BreakDownAbility(int tx, int ty);
+        /// <summary>
+        /// Reason for BreakDownAbility having this complicated List of decisions, is because in the future there might be AOE abilities.
+        /// These abilities may essentially perform 1 ability on several locations simultaneously.
+        /// 
+        /// This is the AI version of the ability which is synchronous.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public abstract List<Decision> BreakDownAbility(List<PathNode> path);
+        public abstract float GetRange();
         public Sprite GetSprite()
         {
             return image;
@@ -38,18 +49,22 @@ namespace Encounter
 
     public class PathfindingConfig
     {
-        public bool ignoresTerrain;
-        public bool ignoresActors;
+        public bool ignoreAll;
+        public bool ignoreLastTile;
+        public bool ignoreActors;
 
-        public PathfindingConfig(bool ignoresTerrain, bool ignoresActors)
+        public PathfindingConfig(bool ignoreAll, bool ignoreLastTile, bool ignoreActors)
         {
-            this.ignoresTerrain = ignoresTerrain;
-            this.ignoresActors = ignoresActors;
+            this.ignoreAll = ignoreAll;
+            this.ignoreLastTile = ignoreLastTile;
+            this.ignoreActors = ignoreActors;
         }
+
         public PathfindingConfig()
         {
-            this.ignoresTerrain = false;
-            this.ignoresActors = true;
+            this.ignoreAll = false;
+            this.ignoreLastTile = false;
+            this.ignoreActors = true;
         }
     }
 }

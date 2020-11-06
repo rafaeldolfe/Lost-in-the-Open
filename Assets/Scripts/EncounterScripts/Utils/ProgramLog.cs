@@ -29,18 +29,18 @@ namespace Encounter
             gem.StartListening("Death", LogDeath);
             gem.StartListening("Attack", LogAttack);
             gem.StartListening("OfferEndTurn", LogOfferEndTurn);
-            gem.StartListening("EndTurn", LogEndTurn);
-            gem.StartListening("BeginAITurn", LogBeginAITurn);
-            gem.StartListening("EndAITurn", LogEndAITurn);
+            gem.StartListening("PlayerEndTurn", LogEndTurn);
+            gem.StartListening("EnemyBeginTurn", LogBeginAITurn);
+            gem.StartListening("EnemyEndTurn", LogEndAITurn);
         }
         void OnDestroy()
         {
             gem.StopListening("Move", LogMoveActor);
             gem.StopListening("Death", LogDeath);
             gem.StopListening("Attack", LogAttack);
-            gem.StopListening("EndTurn", LogEndTurn);
-            gem.StopListening("BeginAITurn", LogBeginAITurn);
-            gem.StopListening("EndAITurn", LogEndAITurn);
+            gem.StopListening("PlayerEndTurn", LogEndTurn);
+            gem.StopListening("EnemyBeginTurn", LogBeginAITurn);
+            gem.StopListening("EnemyEndTurn", LogEndAITurn);
         }
 
         public void LogMoveActor(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
@@ -67,9 +67,9 @@ namespace Encounter
 
             Log(ev);
         }
-        public void LogEndTurn(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
+        public void LogEndTurn()
         {
-            Event ev = new Event(invoker.name, String.Format("Player ended turn"), parameters);
+            Event ev = new Event("GlobalEventManager", String.Format("Player ended turn"), new List<object>());
 
             Log(ev);
         }
@@ -97,7 +97,7 @@ namespace Encounter
         }
         private void Log(Event ev)
         {
-            if (ProgramDebug.debug)
+            if (GlobalDebugManager.debug)
             {
                 Debug.Log(ev.ToString());
             }

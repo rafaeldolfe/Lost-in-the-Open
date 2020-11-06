@@ -49,17 +49,14 @@ namespace WorldMap
             gem.StopListening("AddFood", AddFood);
             gem.StopListening("AddUnits", AddUnits);
         }
-        [Button]
-        private void SetGold(int add = 1)
+        private void EatFood()
         {
-            gold += add;
-            gdm.SetGameData("Gold", gold);
-        }
-        [Button]
-        private void GetGold()
-        {
-            Debug.Log("Gold");
-            Debug.Log(gdm.GetGameData<int>("Gold"));
+            Debug.Log("Fak ur mader!");
+            int unitCount = gdm.GetGameData<List<PlainGameObject>>("PlayerUnits").Count;
+            AddFood(-(unitCount * Constants.UNIT_FOOD_EAT_COST + Constants.KING_FOOD_EAT_COST));
+            Debug.Log($"unitCount: {unitCount}");
+            Debug.Log($"addfood: {-unitCount * Constants.UNIT_FOOD_EAT_COST}");
+            UpdateTexts();
         }
         private void AddGold(GameObject invoker, List<object> parameters)
         {
@@ -71,7 +68,11 @@ namespace WorldMap
             {
                 throw new Exception(string.Format("Expected first object to be int, found {0}", parameters[0].GetType()));
             }
-            gold += (int)parameters[0];
+            AddGold((int)parameters[0]);
+        }
+        private void AddGold(int amount)
+        {
+            gold += amount;
             gdm.SetGameData("Gold", gold);
             UpdateTexts();
         }
@@ -85,7 +86,11 @@ namespace WorldMap
             {
                 throw new Exception(string.Format("Expected first object to be int, found {0}", parameters[0].GetType()));
             }
-            food += (int)parameters[0];
+            AddFood((int)parameters[0]);
+        }
+        private void AddFood(int amount)
+        {
+            food += amount;
             gdm.SetGameData("Food", food);
             UpdateTexts();
         }
@@ -100,6 +105,10 @@ namespace WorldMap
                 throw new Exception(string.Format("Expected first object to be int, found {0}", parameters[0].GetType()));
             }
             List<PlainGameObject> plainGameObjects = (List<PlainGameObject>)parameters[0];
+            AddUnits(plainGameObjects);
+        }
+        private void AddUnits(List<PlainGameObject> plainGameObjects)
+        {
             playerUnits.AddRange(plainGameObjects);
             gdm.SetGameData("PlayerUnits", playerUnits);
             UpdateTexts();
@@ -108,6 +117,18 @@ namespace WorldMap
         {
             goldText.text = $"Gold: {gold}";
             foodText.text = $"Food: {food}";
+        }
+        [Button]
+        private void SetGold(int add = 1)
+        {
+            gold += add;
+            gdm.SetGameData("Gold", gold);
+        }
+        [Button]
+        private void GetGold()
+        {
+            Debug.Log("Gold");
+            Debug.Log(gdm.GetGameData<int>("Gold"));
         }
     }
 }

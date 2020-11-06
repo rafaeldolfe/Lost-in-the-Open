@@ -19,9 +19,13 @@ namespace Encounter
                 this.position = position;
                 this.type = type;
             }
+            public override string ToString()
+            {
+                return $"type: {type}, position: {position}";
+            }
         }
-        private readonly List<SpawnLocation> playerSpawnLocations = new List<SpawnLocation>();
-        private readonly List<SpawnLocation> enemySpawnLocations = new List<SpawnLocation>();
+        private List<SpawnLocation> playerSpawnLocations = new List<SpawnLocation>();
+        private List<SpawnLocation> enemySpawnLocations = new List<SpawnLocation>();
         void Awake()
         {
             List<Type> depTypes = ProgramUtils.GetMonoBehavioursOnType(this.GetType());
@@ -119,6 +123,7 @@ namespace Encounter
 
             gem.TriggerEvent("RegisterPlayerUnits", gameObject, new List<object> { melees.Concat(rangeds).ToList(), king });
 
+            playerSpawnLocations = playerSpawnLocations.Shuffle();
             Queue<SpawnLocation> meleeSpawnLocations = new Queue<SpawnLocation>(playerSpawnLocations.Where(loc => loc.type == "Melee").ToList());
             foreach (GameObject melee in melees)
             {
@@ -176,7 +181,9 @@ namespace Encounter
 
             gem.TriggerEvent("RegisterEnemyUnits", gameObject, new List<object> { melees.Concat(rangeds).ToList() });
 
+            enemySpawnLocations = enemySpawnLocations.Shuffle();
             Queue<SpawnLocation> meleeSpawnLocations = new Queue<SpawnLocation>(enemySpawnLocations.Where(loc => loc.type == "Melee").ToList());
+            
             foreach (GameObject melee in melees)
             {
                 if (meleeSpawnLocations.Count > 0)

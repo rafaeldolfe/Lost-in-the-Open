@@ -8,6 +8,7 @@ namespace Encounter
     {
         public Ability ability;
         public List<PathNode> path;
+        private IEnumerator pathGen;
 
         public Decision(Ability ability, List<PathNode> path)
         {

@@ -8,7 +8,6 @@ namespace WorldMap
 {
     public class NodeHoverScript : MonoBehaviour
     {
-        private int id = 0;
         private GlobalEventManager gem;
 
         private MeshRenderer meshr;

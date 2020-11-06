@@ -39,7 +39,7 @@ namespace Encounter
 
         void Update()
         {
-            if (ProgramDebug.debug)
+            if (GlobalDebugManager.debug)
             {
                 if (gameObject.GetComponent<Move>() != null && gameObject.GetComponent<Move>().Status() == "Busy")
                 {

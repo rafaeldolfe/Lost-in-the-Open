@@ -11,16 +11,22 @@ namespace Encounter
         private GlobalEventManager gem;
         private MapManager mgm;
         private SelectedManager sm;
+        private FactionManager fm;
+        private AIManager aim;
 
         void Awake()
         {
-            gem = FindObjectOfType(typeof(GlobalEventManager)) as GlobalEventManager;
-            sm = FindObjectOfType(typeof(SelectedManager)) as SelectedManager;
-            mgm = FindObjectOfType(typeof(MapManager)) as MapManager;
-            if (gem == null || sm == null || mgm == null)
+            List<Type> depTypes = ProgramUtils.GetMonoBehavioursOnType(this.GetType());
+            List<MonoBehaviour> deps = new List<MonoBehaviour>
             {
-                List<MonoBehaviour> deps = new List<MonoBehaviour> { gem, sm, mgm };
-                List<Type> depTypes = new List<Type> { typeof(GlobalEventManager), typeof(SelectedManager), typeof(MapManager) };
+                (gem = FindObjectOfType(typeof(GlobalEventManager)) as GlobalEventManager),
+                (sm = FindObjectOfType(typeof(SelectedManager)) as SelectedManager),
+                (mgm = FindObjectOfType(typeof(MapManager)) as MapManager),
+                (fm = FindObjectOfType(typeof(FactionManager)) as FactionManager),
+                (aim = FindObjectOfType(typeof(AIManager)) as AIManager),
+            };
+            if (deps.Contains(null))
+            {
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
         }
@@ -63,6 +69,13 @@ namespace Encounter
                 {
                     sm.UseAbility(current.x, current.y);
                 }
+            }
+
+            if (sm.selected != null)
+            {
+                GridContainer current = mgm.grid.GetGridObject(ProgramUtils.GetMouseGridPosition().x, ProgramUtils.GetMouseGridPosition().y);
+
+                sm.HighlightTargetTile(current);
             }
         }
     }

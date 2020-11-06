@@ -24,11 +24,49 @@ MonoBehaviour:
         foodCost: 0
         showTextRegardless: 0
       encounter:
-        sceneName: StandardRebelForestEncounter
+        sceneName: StandardBrigandForestEncounter
         enemies:
         - {fileID: 6159491619698555064, guid: 00d657627667ce34eb4e11eeb1b43784, type: 3}
         - {fileID: 6159491619698555064, guid: 00d657627667ce34eb4e11eeb1b43784, type: 3}
         - {fileID: 6159491619698555064, guid: 00d657627667ce34eb4e11eeb1b43784, type: 3}
+        - {fileID: 3456065453680784595, guid: 82078750f9cb60a49b3db10623b7a922, type: 3}
+        plainEnemies:
+        - prefabName: Pirate
+          folder: Prefabs/Units
+          scripts:
+          - type: Encounter.Actor
+          - type: Encounter.Position
+          - type: Encounter.Health
+          - type: Encounter.Faction
+          - type: Encounter.AbilitiesHandler
+          - type: Encounter.Move
+          - type: Encounter.DefaultAttack
+          - type: Encounter.BehaviourHandler
+          - type: Encounter.AttackMove
+        - prefabName: Pirate
+          folder: Prefabs/Units
+          scripts:
+          - type: Encounter.Actor
+          - type: Encounter.Position
+          - type: Encounter.Health
+          - type: Encounter.Faction
+          - type: Encounter.AbilitiesHandler
+          - type: Encounter.Move
+          - type: Encounter.DefaultAttack
+          - type: Encounter.BehaviourHandler
+          - type: Encounter.AttackMove
+        - prefabName: Pirate
+          folder: Prefabs/Units
+          scripts:
+          - type: Encounter.Actor
+          - type: Encounter.Position
+          - type: Encounter.Health
+          - type: Encounter.Faction
+          - type: Encounter.AbilitiesHandler
+          - type: Encounter.Move
+          - type: Encounter.DefaultAttack
+          - type: Encounter.BehaviourHandler
+          - type: Encounter.AttackMove
       pointsTo: AttackConclusion
     - text: Circumvent the camp
       precondition:
@@ -38,25 +76,29 @@ MonoBehaviour:
       encounter:
         sceneName: 
         enemies: []
+        plainEnemies: []
       pointsTo: CircumventConclusion
     hasConclusion: 0
     conclusion:
       gold: 0
       food: 0
       units: []
+      plainUnits: []
   - id: AttackConclusion
     text: You successfully crush the rebel camp.
     options: []
     hasConclusion: 1
     conclusion:
-      gold: 5
-      food: 3
+      gold: 18
+      food: 55
       units: []
+      plainUnits: []
   - id: CircumventConclusion
     text: You manage to sneak around them.
     options: []
-    hasConclusion: 1
+    hasConclusion: 0
     conclusion:
       gold: 0
-      food: 3
+      food: 0
       units: []
+      plainUnits: []

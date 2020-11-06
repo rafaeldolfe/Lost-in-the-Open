@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace Encounter
 {
-    public abstract class OffensiveAbility : Ability
+    public interface IOffensive
     {
-        public abstract float GetDamage();
+        float GetDamage();
     }
 }

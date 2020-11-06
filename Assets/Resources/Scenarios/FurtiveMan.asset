@@ -18,7 +18,7 @@ MonoBehaviour:
     text: In front of you sits a man on a rock, hunched and furtive. You hail him.
       He is startled and turns around, "Please, have you some food?"
     options:
-    - text: Give him 1 food
+    - text: Give him enough for a meal (3 food)
       precondition:
         goldCost: 0
         foodCost: 1
@@ -26,8 +26,9 @@ MonoBehaviour:
       encounter:
         sceneName: 
         enemies: []
-      pointsTo: Give1Food
-    - text: Give him 3 food
+        plainEnemies: []
+      pointsTo: Give3Food
+    - text: Give him enough for a few meals (9 food)
       precondition:
         goldCost: 0
         foodCost: 3
@@ -35,7 +36,8 @@ MonoBehaviour:
       encounter:
         sceneName: 
         enemies: []
-      pointsTo: Give3Food
+        plainEnemies: []
+      pointsTo: Give9Food
     - text: Be on your way
       precondition:
         goldCost: 0
@@ -44,31 +46,35 @@ MonoBehaviour:
       encounter:
         sceneName: 
         enemies: []
+        plainEnemies: []
       pointsTo: GiveNoFood
     hasConclusion: 0
     conclusion:
       gold: 0
       food: 0
       units: []
-  - id: Give1Food
+      plainUnits: []
+  - id: Give3Food
     text: He accepts the food eagerly, forces a smile. You watch as he devours the
       little bit of food, and then head on your way.
     options: []
     hasConclusion: 1
     conclusion:
-      gold: 0
-      food: -1
+      gold: 5
+      food: -3
       units: []
-  - id: Give3Food
+      plainUnits: []
+  - id: Give9Food
     text: The man is overjoyed and runs into the woods, thanking the gods. Before
       you leave, you notice something glimmering where the man once sat. A small sack
       of gold was left behind.
     options: []
     hasConclusion: 1
     conclusion:
-      gold: 4
-      food: -3
+      gold: 24
+      food: -9
       units: []
+      plainUnits: []
   - id: GiveNoFood
     text: The man loses interest in your group and resumes his hunched position.
     options: []
@@ -77,3 +83,4 @@ MonoBehaviour:
       gold: 0
       food: 0
       units: []
+      plainUnits: []

@@ -45,7 +45,6 @@ namespace Encounter
         private FactionManager fm;
 
         private List<TileEvaluation> tileEvaluations;
-        private PathNode objective;
 
         void Awake()
         {
@@ -62,108 +61,104 @@ namespace Encounter
                 throw ProgramUtils.DependencyException(deps, depTypes);
             }
         }
-        void Start()
+        public IEnumerator GenerateTileEvaluations(int x, int y, int moveRange = 5, int attackRange = 5)
         {
-            tileEvaluations = mgm.grid.tiles.Select(gc => new TileEvaluation(gc.pn)).ToList();
-        }
-        public void GenerateTileEvaluations(int x, int y)
-        {
-            Profiler.BeginSample("GenerateTileEvaluations: mgm.grid.tiles Where Select");
-            // Code to measure...
-            //Debug.Log($"x:{x}, y:{y}");
-            tileEvaluations = mgm.grid.GetRectangularArea(x, y, Constants.NEARBY_RADIUS, Constants.NEARBY_RADIUS)
-                .Where(gc => gc.pn.isWalkable && !gc.pn.hasActor)
+            if (tileEvaluations == null)
+            {
+                Debug.Log($"tiles count: {mgm.grid.tiles.Count()}");
+                tileEvaluations = mgm.grid.tiles.Select(gc => new TileEvaluation(gc.pn)).ToList();
+                Debug.Log($"tileEvaluations count: {tileEvaluations.Count()}");
+            }
+            tileEvaluations = mgm.grid.GetRectangularArea(x, y, moveRange, moveRange)
+                .Where(gc => gc.pn.isWalkable)
                 .Select(gc => new TileEvaluation(gc.pn))
                 .ToList();
-            //Debug.Log("GenerateTileEvaluations: tileEvaluations.Count");
-            //Debug.Log(tileEvaluations.Count);
 
-            //tileEvaluations.Select(te => te.position).ToList().ForEach(Debug.Log);
-
-            //tileEvaluations = mgm.grid.tiles
-            //    .Where(gc => Mathf.Abs(gc.x - x) < Constants.NEARBY_RADIUS && Mathf.Abs(gc.y - y) < Constants.NEARBY_RADIUS)
-            //    .Select(gc => new TileEvaluation(gc.pn))
-            //    .ToList();
-            Profiler.EndSample();
-            Profiler.BeginSample("GenerateTileEvaluations: foreach (TileEvaluation te in tileEvaluations)");
+            List<Task> routines = new List<Task>();
             foreach (TileEvaluation te in tileEvaluations)
             {
-                CalculateDomainKnowledgeAt(te);
+                routines.Add(Task.Get(CalculateDomainKnowledgeAt(x, y, te, moveRange + attackRange), true));
             }
-            Profiler.EndSample();
-        }
-        private int calculateTileCounter = 0;
-        private void CalculateDomainKnowledgeAt(TileEvaluation te)
-        {
-            Profiler.BeginSample("CalculateDomainKnowledgeAt: te.Reset()");
-            te.Reset();
-            Profiler.EndSample();
-
-            Profiler.BeginSample("CalculateDomainKnowledgeAt: relevantTiles Where Linq");
-            IEnumerable<GridContainer> relevantTiles = mgm.grid
-                .GetRectangularArea(te.position.x, te.position.y, Constants.DOMAIN_KNOWLEDGE_RADIUS, Constants.DOMAIN_KNOWLEDGE_RADIUS)
-                .Where(gc => gc.pn.isWalkable && !gc.pn.hasActor);
-
-            //Debug.Log("CalculateDomainKnowledgeAt: relevantTiles.Count");
-            //relevantTiles.Select(gc => gc.pn).ToList().ForEach(Debug.Log);
-            Profiler.EndSample();
-            Profiler.BeginSample("CalculateDomainKnowledgeAt: foreach (GridContainer grid in relevantTiles)");
-            foreach (GridContainer grid in relevantTiles)//mgm.grid.tiles)
+            foreach (Task co in routines)
             {
-                calculateTileCounter++;
-                te.visibility = 0;
-                Profiler.BeginSample("CalculateDomainKnowledgeAt: foreach: fm.GetFactionOf(grid.actor) == \"Pirate\"");
-                if (fm.GetFactionOf(grid.actor) == "Pirate")
+                while (co.Running)
                 {
-                    //float dist = pf.FindPathInto2(te.position.x, te.position.y, grid.x, grid.y).Count - 1;
-                    float dist = Mathf.Abs(te.position.x - grid.x) + Mathf.Abs(te.position.y - grid.y);// pf.FindPathInto2(te.position.x, te.position.y, grid.x, grid.y).Count - 1;
+                    yield return co;
+                }
+            }
+        }
+        private IEnumerator CalculateDomainKnowledgeAt(int currentX, int currentY, TileEvaluation te, int domainRange)
+        {
+            if (domainRange >= 5)
+            {
+                domainRange = 5;
+            }
+            te.Reset();
+
+            IEnumerable<GridContainer> relevantTiles = mgm.grid
+                .GetRectangularArea(te.position.x, te.position.y, domainRange, domainRange)
+                .Where(gc => gc.pn.isWalkable);
+
+            foreach (GridContainer grid in relevantTiles)
+            {
+                if (grid.x == currentX && grid.y == currentY)
+                {
+                    continue;
+                }
+                te.visibility = 0;
+
+                if (fm.GetFactionOf(grid.actor) == "Enemy")
+                {
+                    float dist = Mathf.Sqrt(Mathf.Pow(Mathf.Abs(te.position.x - grid.x), 2) + Mathf.Pow(Mathf.Abs(te.position.y - grid.y), 2));
                     if (dist != 0)
                     {
-                        te.proximityToAllies += 1 / dist;
+                        te.proximityToAllies += Constants.ActorProximityFunc(dist);
                     }
                 }
-                Profiler.EndSample();
-                Profiler.BeginSample("CalculateDomainKnowledgeAt: foreach: fm.GetFactionOf(grid.actor) == \"Player\"");
                 if (fm.GetFactionOf(grid.actor) == "Player")
                 {
-                    //float dist = pf.FindPathInto2(te.position.x, te.position.y, grid.x, grid.y).Count - 1;
-                    float dist = Mathf.Abs(te.position.x - grid.x) + Mathf.Abs(te.position.y - grid.y);
+
+                    float dist = Mathf.Sqrt(Mathf.Pow(Mathf.Abs(te.position.x - grid.x), 2) + Mathf.Pow(Mathf.Abs(te.position.y - grid.y), 2));
                     if (dist != 0)
                     {
-                        te.proximityToEnemies += 1 / dist;
+                        te.proximityToEnemies += Constants.ActorProximityFunc(dist);
                     }
                 }
-                Profiler.EndSample();
             }
-            Profiler.EndSample();
 
-            Profiler.BeginSample("CalculateDomainKnowledgeAt: kings Where Linq");
             IEnumerable<GameObject> kings = fm.GetFaction("Player")
                 .Where(actor => actor.name.Contains("King") && actor.transform.position.x != 0);
-            Profiler.EndSample();
             if (kings.Count() != 0)
             {
                 Position kingPos = kings.First().GetComponent<Position>();
-                //Debug.Log($"Position of King: {kingPos}");
-                Profiler.BeginSample("CalculateDomainKnowledgeAt: kings FindPathInto");
-                float objdist = pf.FindPathInto2(te.position.x, te.position.y, kingPos.x, kingPos.y).Count - 1;
-                //Debug.Log($"objdist: {objdist}");
-                Profiler.EndSample();
-                te.distanceToAttackObjective += -objdist;
+
+                PathEnumerator pathGen = pf.AsyncFindPath(te.position.x, te.position.y, kingPos.x, kingPos.y, new PathfindingConfig(false, true, true));
+                yield return pathGen.Coroutine;
+                List<PathNode> path = pathGen.Result;
+
+                if (path == null)
+                {
+                    te.distanceToAttackObjective -= pf.ManhattanDistance(te.position.x, te.position.y, kingPos.x, kingPos.y);
+                }
+                else
+                {
+                    float objdist = path.Sum(p => p.walkIntoCost);
+
+                    te.distanceToAttackObjective -= objdist;
+                }
             }
         }
         public float EvaluatePositionalStrength(PathNode pn, float visibilityMultiplier, float proximityToEnemiesMultiplier, float proximityToAlliesMultiplier, float distanceToObjectiveMultiplier)
         {
-            //Debug.Log("EvaluatePositionalStrength: tileEvaluations.Count");
             TileEvaluation te = tileEvaluations.Find(tev => tev.position.x == pn.x && tev.position.y == pn.y);
 
-            //tileEvaluations.ForEach(Debug.Log);
-
-            //Debug.Log(pn);
+            //ProgramUtils.PrintIEnumerable(tileEvaluations);
 
             if (te == null)
             {
                 throw new Exception("Invalid grid coordinates");
+                // 21, 13 finns inte,
+                // dock fanns 21, 11 och 21, 15
             }
 
             float accumulativeStrength = visibilityMultiplier * te.visibility +

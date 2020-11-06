@@ -112,7 +112,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e13c9f31bd391542a13b384f0dc69d4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  name: WhiteBall
+  name: King Nrvesk
   portrait: {fileID: 21300000, guid: bb8471bf75f2a2040a1dd2f0cc5d2ea8, type: 3}
 --- !u!114 &4092583430328215019
 MonoBehaviour:
@@ -126,9 +126,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 44e3da01c6d9ed74d81c50f23fbe2122, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  abilityNames:
-  - Move
-  - DefaultAttack
 --- !u!114 &267985309067410371
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -191,6 +188,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 30
+  health: 30
 --- !u!114 &2761046180564059154
 MonoBehaviour:
   m_ObjectHideFlags: 0

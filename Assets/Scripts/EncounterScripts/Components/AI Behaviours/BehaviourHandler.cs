@@ -56,6 +56,8 @@ namespace Encounter
         {
             return behaviours;
         }
+
+
         public List<Analysis> GetAnalyses()
         {
             List<Analysis> analyses = behaviours
@@ -67,8 +69,7 @@ namespace Encounter
         {
             foreach (Decision decision in decisions)
             {
-                decision.ability.UseAbility(decision.path);
-                yield return new WaitForSeconds(0.5f);
+                yield return decision.ability.UseAbility(decision.path);
                 while (decision.ability.Status() == "Busy")
                     yield return new WaitForSeconds(0.25f);
             }
@@ -76,6 +77,38 @@ namespace Encounter
         private void CacheBehaviours()
         {
             behaviours = behaviourNames.ConvertAll<Behaviour>(be => (Behaviour)gameObject.GetComponent(be));
+        }
+        /// <summary>
+        /// Returns the range of the first (primary) movement ability.
+        /// </summary>
+        /// <returns></returns>
+        public int GetMoveRange()
+        {
+            foreach (Ability ability in ah.GetAbilities())
+            {
+                if (ability is IMovement)
+                {
+                    return (int) Math.Ceiling(ability.range);
+                }
+            }
+            return 5;
+        }
+        public int GetAttackRange()
+        {
+            foreach (Ability ability in ah.GetAbilities())
+            {
+                if (ability is IOffensive)
+                {
+                    return (int)Math.Ceiling(ability.range);
+                }
+            }
+            return 5;
+        }
+
+        internal List<(List<Decision>, float)> _GetEvaluationsOfFirstBehaviour()
+        {
+            Behaviour behaviour = behaviours[0];
+            return behaviour._GetEvaluations();
         }
     }
 }

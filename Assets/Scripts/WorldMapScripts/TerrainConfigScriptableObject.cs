@@ -14,7 +14,7 @@ namespace WorldMap
     public class TerrainConfigScriptableObject : SerializedScriptableObject
     {
         [Tooltip("Name of terrain.")]
-        public string name;
+        public new string name;
         [Tooltip("Available scenarios for this terrain with weights for the likelihood that each is chosen.")]
         [SerializeField]
         public Dictionary<ScenarioScriptableObject, float> weightedScenarios;

@@ -19,6 +19,7 @@ GameObject:
   - component: {fileID: 6159491619698555070}
   - component: {fileID: 6159491619698555071}
   - component: {fileID: 6159491619698555068}
+  - component: {fileID: 1272907552497657553}
   - component: {fileID: 6159491619698555066}
   - component: {fileID: 6159491619698555067}
   - component: {fileID: 7052765699576017831}
@@ -114,7 +115,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e13c9f31bd391542a13b384f0dc69d4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  name: PirateCube
+  name: Brigand
   portrait: {fileID: 21300000, guid: d659f7396cd57754eba78763cf986c51, type: 3}
 --- !u!114 &6159491619698555059
 MonoBehaviour:
@@ -143,6 +144,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 45
+  health: 45
 --- !u!114 &6159491619698555057
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -155,7 +157,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c590d729a092054498408fceb3cdc85, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  faction: Pirate
+  faction: Enemy
 --- !u!114 &6159491619698555070
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,9 +170,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 44e3da01c6d9ed74d81c50f23fbe2122, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  abilityNames:
-  - Move
-  - DefaultAttack
 --- !u!114 &6159491619698555071
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -202,8 +201,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   image: {fileID: 21300000, guid: 5f6369e3a21a5e84ebd9ad59d7471761, type: 3}
   category: Attack
-  range: 1
-  defaultAttackDamage: 20
+  range: 1.5
+  defaultAttackDamage: 23
+  numberOfAttacks: 1
+  remainingAttacks: 1
+--- !u!114 &1272907552497657553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6159491619698555064}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 370b2c7e77c434c42b25e202d5bf5f42, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  image: {fileID: 21300000, guid: 46a0ae14359f8f041bb24b87ed80a804, type: 3}
+  category: 
+  range: 1.5
+  opportunityDamage: 13
   numberOfAttacks: 1
   remainingAttacks: 1
 --- !u!114 &6159491619698555066

@@ -9,7 +9,7 @@ namespace Encounter
 {
     [RequireComponent(typeof(Position))]
     [RequireComponent(typeof(AbilitiesHandler))]
-    public class Move : MovementAbility
+    public class Move : ActiveAbility, IMovement
     {
         private GlobalEventManager gem;
         private Pathfinding pf;
@@ -17,9 +17,9 @@ namespace Encounter
         private Position pos;
 
         private bool ready = true;
-        private Vector3 target;
         [SerializeField]
-        private int usedMoves;
+        [HideInInspector]
+        private float usedMoves;
 
         public float moveSpeed;
 
@@ -40,37 +40,16 @@ namespace Encounter
             usedMoves = 0;
             category = "Movement";
             highlightColor = new Color(0.22f, 0.7f, 0.22f, 0.78f); // Green
-            pfconfig = new PathfindingConfig(ignoresTerrain: false, ignoresActors: false);
-            gem.StartListening("Move", MoveHandler);
+            pfconfig = new PathfindingConfig(ignoreAll: false, ignoreLastTile: false, ignoreActors: false);
         }
-        void OnDestroy()
+        public void Moved(PathNode target)
         {
-            gem.StopListening("Move", MoveHandler);
-        }
-        void Update()
-        {
-            if (!ready)
-            {
-                return;
-            }
-            if (q.Count == 0)
-            {
-                return;
-            }
-
-            target = ConsumeMove();
-
-            gem.TriggerEvent("Move", gameObject, x: pos.x, y: pos.y, tx: (int)Math.Round(target.x), ty: (int)Math.Round(target.y));
-        }
-
-        public void MoveHandler(GameObject invoker, List<object> parameters, int x, int y, int tx, int ty)
-        {
-            if (invoker != gameObject)
-            {
-                return;
-            }
-            int traversal = Math.Abs(x - tx) + Math.Abs(y - ty);
-            if (traversal > 1)
+            int x = pos.x;
+            int y = pos.y;
+            int tx = target.x;
+            int ty = target.y;
+            float traversal = (new Vector3(x, y, 0) - new Vector3(tx, ty, 0)).magnitude;
+            if (traversal > 2)
             {
                 throw new Exception("Expected movement to be 1 tile straight, found " + traversal + " moves along x or y");
             }
@@ -80,10 +59,8 @@ namespace Encounter
             pos.MoveTo(tx, ty);
 
             ready = false;
-
-            StartCoroutine(MoveOverSpeed(gameObject, target, moveSpeed));
         }
-        public override int GetRange()
+        public override float GetRange()
         {
             if (range < usedMoves)
             {
@@ -91,7 +68,7 @@ namespace Encounter
             }
             return range - usedMoves;
         }
-        public override void UseAbility(List<PathNode> path)
+        public override IEnumerator UseAbility(List<PathNode> targets)
         {
             if (Done())
             {
@@ -102,27 +79,54 @@ namespace Encounter
                 throw new Exception("Tried to move while actor was busy");
             }
 
-            AddMoves(path.Skip(1).ToList());
+            PathNode target = targets.Last();
+            ready = false;
+            gem.TriggerEvent("Move", gameObject, x: pos.x, y: pos.y, tx: target.x, ty: target.y);
+            Moved(target);
+            yield return MoveOverSpeed(gameObject, new Vector3(target.x, target.y), moveSpeed);
+            ready = true;
+        }
+        public override IEnumerator BreakDownAbility(int tx, int ty)
+        {
+            PathEnumerator pathGen = pf.AsyncFindPath(pos.x, pos.y, tx, ty, pfconfig);
+            yield return pathGen.Coroutine;
+            List<PathNode> path = pathGen.Result;
+            List<Decision> decisions = new List<Decision>();
+            for (int i = 0; i < path.Count() - 1; i++)
+            {
+                decisions.Add(MoveBetween(path[i], path[i + 1]));
+            }
+            yield return decisions;
+        }
+        private Decision MoveBetween(PathNode p1, PathNode p2)
+        {
+            return new Decision(this, new List<PathNode> { p1, p2 });
         }
         public override bool Done()
         {
-            return usedMoves == range && ready;
+            if (GetTilesWithinRange().Count == 0)
+            {
+                return ready;
+            }
+            return false;
         }
         public override string Status()
         {
-            return q.Count == 0 && ready ? "Idle" : "Busy";
+            return ready ? "Idle" : "Busy";
         }
-        public override void Reset(List<object> parameters)
+        public override void Reset()
         {
             usedMoves = 0;
         }
         public override List<PathNode> GetTargetsFrom(int x, int y)
         {
-            return pf.FindPathNodesWithinRange(x, y, GetRange(), pfconfig);
+            tilesWithinRange = pf.DijkstraWithinRangeCaching(this, x, y, GetRange(), pfconfig);
+            tilesWithinRange.RemoveAt(0);
+            return tilesWithinRange;
         }
         public override List<PathNode> GetPathToTargetFrom(int x, int y, int tx, int ty)
         {
-            return pf.FindPath(x, y, tx, ty, pfconfig);
+            return pf.FindPathWithinRange(this, x, y, tx, ty);
         }
         public IEnumerator currentMovement;
         public IEnumerator MoveOverSpeed(GameObject objectToMove, Vector3 end, float speed)
@@ -136,42 +140,32 @@ namespace Encounter
                 }
                 yield return new WaitForEndOfFrame();
             }
-            ready = true;
+        }
 
-            if (Done())
-            {
-                ah.AbilityDone();
-            }
-        }
-        public IEnumerator MoveOverSeconds(GameObject objectToMove, Vector3 end, float seconds)
+        public override List<PathNode> GetTilesWithinRange()
         {
-            float elapsedTime = 0;
-            Vector3 startingPos = objectToMove.transform.position;
-            while (elapsedTime < seconds)
-            {
-                objectToMove.transform.position = Vector3.Lerp(startingPos, end, (elapsedTime / seconds));
-                elapsedTime += Time.deltaTime;
-                yield return new WaitForEndOfFrame();
-            }
-            objectToMove.transform.position = end;
-            ready = true;
+            return GetTilesWithinRange(pos.x, pos.y);
+        }
+        private List<PathNode> GetTilesWithinRange(int x, int y)
+        {
+            tilesWithinRange = pf.DijkstraWithinRange(x, y, GetRange(), pfconfig);
+            tilesWithinRange.RemoveAt(0);
+            return tilesWithinRange;
+        }
 
-            if (Done())
-            {
-                ah.AbilityDone();
-            }
-        }
-        private Queue<Vector3> q = new Queue<Vector3>();
-        public void AddMoves(List<PathNode> path)
+        public override List<Decision> BreakDownAbility(List<PathNode> path)
         {
-            foreach (PathNode p in path)
+            List<Decision> decisions = new List<Decision>();
+            for (int i = 0; i < path.Count() - 1; i++)
             {
-                q.Enqueue(new Vector3(p.x, p.y, 0));
+                decisions.Add(MoveBetween(path[i], path[i + 1]));
             }
+            return decisions;
         }
-        public Vector3 ConsumeMove()
+
+        public override List<PathNode> GetTargetTiles(int tx, int ty)
         {
-            return q.Dequeue();
+            return pf.SyncFindPath(pos.x, pos.y, tx, ty, pfconfig);
         }
     }
 }
