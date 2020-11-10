@@ -101,7 +101,7 @@ namespace ThreadedPathfinding.Internal
                     if (!costSoFar.ContainsKey(n) || newCost < costSoFar[n])
                     {
                         costSoFar[n] = newCost;
-                        float priority = newCost + Heuristic(current, n);
+                        float priority = newCost + Heuristic(n, end);
                         open.Enqueue(n, priority);
                         cameFrom[n] = current;
                     }

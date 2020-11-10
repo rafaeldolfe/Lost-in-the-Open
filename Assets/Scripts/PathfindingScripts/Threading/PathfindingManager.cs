@@ -133,8 +133,8 @@ public class PathfindingManager : MonoBehaviour
     }
     public List<PathNode> SyncFindPath(int startX, int startY, int endX, int endY, PathfindingConfig pconf)
     {
-        List<PNode> nodes = new List<PNode>();
-        PathfindingResult result = Pathfinder.Run(startX, startY, endX, endY, pconf, Provider, null, out nodes);
+        List<PNode> nodes;
+        Pathfinder.Run(startX, startY, endX, endY, pconf, Provider, null, out nodes);
         return Provider.TranslatePath(nodes);
     }
     public IEnumerator GetPath(int startX, int startY, int endX, int endY, PathfindingConfig pconf, PathFound voider = null)
